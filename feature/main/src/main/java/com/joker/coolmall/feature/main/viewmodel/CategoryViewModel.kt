@@ -53,6 +53,9 @@ class CategoryViewModel @Inject constructor(
             onLoading = { _categoryUiState.value = CategoryUiState.Loading },
             onData = { data ->
                 val categoryTree = convertToTree(data)
+                if (_selectedCategoryIndex.value !in categoryTree.indices) {
+                    _selectedCategoryIndex.value = 0
+                }
                 _categoryUiState.value = CategoryUiState.Success(categoryTree)
             },
             onError = { message, exception ->
@@ -77,7 +80,10 @@ class CategoryViewModel @Inject constructor(
      * @author Joker.X
      */
     fun selectCategory(index: Int) {
-        _selectedCategoryIndex.value = index
+        val categoryTrees = (_categoryUiState.value as? CategoryUiState.Success)?.data ?: return
+        if (index in categoryTrees.indices) {
+            _selectedCategoryIndex.value = index
+        }
     }
 
     /**
@@ -93,14 +99,6 @@ class CategoryViewModel @Inject constructor(
 
         // 将Category转换为CategoryTree
         val categoryTrees = sortedList.map { CategoryTree.fromCategory(it) }
-
-        // 临时存储，key是id，value是该分类在categoryTrees中的索引
-        val categoryMap = mutableMapOf<Long, Int>()
-
-        // 初始化映射
-        categoryTrees.forEachIndexed { index, categoryTree ->
-            categoryMap[categoryTree.id] = index
-        }
 
         // 找出顶级分类
         val rootCategories = mutableListOf<CategoryTree>()
