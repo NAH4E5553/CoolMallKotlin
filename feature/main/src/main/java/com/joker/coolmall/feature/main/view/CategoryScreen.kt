@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,11 +35,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +60,7 @@ import com.joker.coolmall.core.model.entity.CategoryTree
 import com.joker.coolmall.core.model.preview.previewCategoryTreeList
 import com.joker.coolmall.navigation.goods.GoodsNavigator
 import com.joker.coolmall.core.ui.component.appbar.CenterTopAppBar
+import com.joker.coolmall.core.ui.component.empty.Empty
 import com.joker.coolmall.core.ui.component.empty.EmptyNetwork
 import com.joker.coolmall.core.ui.component.image.NetWorkImage
 import com.joker.coolmall.core.ui.component.loading.PageLoading
@@ -65,7 +69,9 @@ import com.joker.coolmall.feature.main.R
 import com.joker.coolmall.feature.main.component.CommonScaffold
 import com.joker.coolmall.feature.main.state.CategoryUiState
 import com.joker.coolmall.feature.main.viewmodel.CategoryViewModel
-import kotlinx.coroutines.launch
+import com.joker.coolmall.core.ui.R as CoreUiR
+
+private val LeftCategoryItemHeight = 50.dp
 
 /**
  * 分类页面路由
@@ -116,11 +122,20 @@ internal fun CategoryScreen(
             when (uiState) {
                 is CategoryUiState.Loading -> PageLoading()
                 is CategoryUiState.Error -> EmptyNetwork(onRetryClick = onRetry)
-                is CategoryUiState.Success -> CategoryContentView(
-                    categoryTrees = uiState.data,
-                    selectedIndex = selectedIndex,
-                    onCategorySelected = onCategorySelected,
-                )
+                is CategoryUiState.Success -> {
+                    if (uiState.data.isEmpty()) {
+                        Empty(
+                            message = R.string.category_empty,
+                            icon = CoreUiR.drawable.ic_empty_data
+                        )
+                    } else {
+                        CategoryContentView(
+                            categoryTrees = uiState.data,
+                            selectedIndex = selectedIndex,
+                            onCategorySelected = onCategorySelected,
+                        )
+                    }
+                }
             }
         }
     }
@@ -140,9 +155,6 @@ private fun CategoryContentView(
     selectedIndex: Int,
     onCategorySelected: (Int) -> Unit
 ) {
-    // 记住协程作用域，用于滚动操作
-    val coroutineScope = rememberCoroutineScope()
-
     // 右侧列表的滚动状态
     val rightListState = rememberLazyListState()
 
@@ -155,25 +167,7 @@ private fun CategoryContentView(
     // 使用derivedStateOf获取当前可见的一级分类索引
     val currentVisibleIndex = remember {
         derivedStateOf {
-            // 获取当前所有可见项
-            val visibleItems = rightListState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty()) return@derivedStateOf selectedIndex
-
-            // 第一个完全可见的项
-            val firstCompletelyVisibleItemIndex = visibleItems
-                .firstOrNull { it.offset >= 0 }?.index ?: rightListState.firstVisibleItemIndex
-
-            // 计算屏幕中心位置
-            val centerOffset = rightListState.layoutInfo.viewportEndOffset / 2
-
-            // 找到中心位置显示的项
-            val centerItem = visibleItems.firstOrNull { itemInfo ->
-                val itemCenter = itemInfo.offset + (itemInfo.size / 2)
-                (itemCenter > 0) && (itemCenter < centerOffset)
-            }
-
-            // 优先使用中心项，其次是第一个完全可见项，最后是第一个可见项
-            centerItem?.index ?: firstCompletelyVisibleItemIndex
+            rightListState.firstVisibleItemIndex
         }
     }
 
@@ -193,9 +187,9 @@ private fun CategoryContentView(
         ) { // 避免重复滚动
             isScrollingFromLeftClick = true
             lastSelectedIndex = selectedIndex
-            coroutineScope.launch {
+            try {
                 rightListState.animateScrollToItem(selectedIndex)
-                // 滚动完成后重置标志
+            } finally {
                 isScrollingFromLeftClick = false
             }
         }
@@ -204,12 +198,9 @@ private fun CategoryContentView(
     AppRow(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 提取一级分类名称用于左侧显示
-        val rootCategories = categoryTrees.map { it.name }
-
         // 左侧分类列表
         LeftCategoryList(
-            categories = rootCategories,
+            categories = categoryTrees,
             selectedIndex = selectedIndex,
             onCategorySelected = onCategorySelected,
             modifier = Modifier
@@ -231,7 +222,7 @@ private fun CategoryContentView(
 /**
  * 左侧分类列表
  *
- * @param categories 分类名称列表
+ * @param categories 分类列表
  * @param selectedIndex 当前选中的分类索引
  * @param onCategorySelected 分类选中回调
  * @param modifier 修饰符
@@ -239,30 +230,55 @@ private fun CategoryContentView(
  */
 @Composable
 private fun LeftCategoryList(
-    categories: List<String>,
+    categories: List<CategoryTree>,
     selectedIndex: Int,
     onCategorySelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
-        // 实际的分类列表
-        AppLazyColumn {
-            // 首先渲染所有实际分类项
-            itemsIndexed(categories) { index, category ->
+    val leftListState = rememberLazyListState()
+    val groupColor = MaterialTheme.colorScheme.background
+
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex in categories.indices) {
+            leftListState.animateScrollToItem(selectedIndex)
+        }
+    }
+
+    Box(modifier = modifier.background(MaterialTheme.colorScheme.surface)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLeftCategoryGroups(
+                listState = leftListState,
+                selectedIndex = selectedIndex,
+                categoryCount = categories.size,
+                color = groupColor
+            )
+        }
+
+        AppLazyColumn(
+            listState = leftListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent),
+            fillMaxSize = true
+        ) {
+            itemsIndexed(
+                items = categories,
+                key = { _, category -> category.id }
+            ) { index, category ->
                 LeftCategoryItem(
-                    name = category,
+                    name = category.name,
                     isSelected = index == selectedIndex,
-                    isPrevious = index == selectedIndex - 1,
-                    isNext = index == selectedIndex + 1,
-                    isFirst = index == 0,
-                    onClick = { onCategorySelected(index) }
+                    onClick = {
+                        onCategorySelected(index)
+                    }
                 )
             }
 
-            // 额外添加一个不可点击的底部占位项（用于实现最后一项的圆角效果）
-            item {
-                BottomPlaceholderItem(
-                    isLastSelected = selectedIndex == categories.size - 1
+            item(key = "bottom-placeholder") {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(LeftCategoryItemHeight)
                 )
             }
         }
@@ -274,9 +290,6 @@ private fun LeftCategoryList(
  *
  * @param name 分类名称
  * @param isSelected 是否是当前选中项
- * @param isPrevious 是否为选中项的前一项
- * @param isNext 是否为选中项的后一项
- * @param isFirst 是否为第一项
  * @param onClick 点击事件回调
  * @author Joker.X
  */
@@ -284,46 +297,8 @@ private fun LeftCategoryList(
 private fun LeftCategoryItem(
     name: String,
     isSelected: Boolean,
-    isPrevious: Boolean = false,
-    isNext: Boolean = false,
-    isFirst: Boolean = false,
     onClick: () -> Unit
 ) {
-
-
-    // 确定圆角形状
-    val cornerShape = if (!isSelected) {
-        when {
-            // 第一项 - 始终有右上角圆角
-            isFirst -> {
-                if (isPrevious) {
-                    // 如果既是第一项又是前一项，同时有右上角和右下角圆角
-                    RoundedCornerShape(
-                        topStart = 0.dp,
-                        topEnd = RadiusLarge,
-                        bottomEnd = RadiusLarge,
-                        bottomStart = 0.dp
-                    )
-                } else {
-                    // 仅是第一项，只有右上角圆角
-                    RightTopRoundedShape
-                }
-            }
-
-            isPrevious -> RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
-                bottomEnd = RadiusLarge,
-                bottomStart = 0.dp
-            )  // 前一项右下角圆角
-            isNext -> RightTopRoundedShape         // 后一项右上角圆角
-            else -> RoundedCornerShape(0.dp)       // 其他项无圆角
-        }
-    } else {
-        // 选中项没有圆角
-        RoundedCornerShape(0.dp)
-    }
-
     // 添加文本颜色动画
     val textColor by animateColorAsState(
         targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -354,35 +329,22 @@ private fun LeftCategoryItem(
     // 添加字体粗细动画 (通过改变字重来实现)
     val fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal
 
-    // 底层白色Box
+    // 菜单项
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp)
-            .background(MaterialTheme.colorScheme.surface)  // 使用surface颜色
+            .height(LeftCategoryItemHeight)
             .then(
                 if (!isSelected) {
                     // 非选中项可点击，带水波纹效果
-                    Modifier
-                        .clip(cornerShape) // 先裁剪确保水波纹有圆角
-                        .clickable(onClick = onClick) // 使用默认的clickable带水波纹
+                    Modifier.clickable(onClick = onClick)
                 } else {
                     // 选中项不可点击
                     Modifier
                 }
             )
     ) {
-        // 如果不是选中项，则添加背景顶层Box（可能带圆角）
-        if (!isSelected) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(cornerShape)
-                    .background(MaterialTheme.colorScheme.background)  // 使用background颜色
-            )
-        }
-
         // 左侧指示条，使用动画宽度
         if (indicatorWidth > 0.dp) {
             Spacer(
@@ -409,45 +371,92 @@ private fun LeftCategoryItem(
 }
 
 /**
- * 底部占位项
- *
- * @param isLastSelected 最后一项是否被选中
- * @author Joker.X
+ * 绘制左侧未选中分类的背景分组。
  */
-@Composable
-private fun BottomPlaceholderItem(
-    isLastSelected: Boolean
+private fun DrawScope.drawLeftCategoryGroups(
+    listState: LazyListState,
+    selectedIndex: Int,
+    categoryCount: Int,
+    color: Color
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-    ) {
-        // 只有当最后一项被选中时，才需要添加右上角的圆角
-        if (isLastSelected) {
-            // 添加表面颜色背景
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            )
+    if (categoryCount == 0 || selectedIndex !in 0 until categoryCount) return
 
-            // 顶层添加背景色圆角
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RightTopRoundedShape)
-                    .background(MaterialTheme.colorScheme.background)
-            )
-        } else {
-            // 否则就是普通的背景颜色
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            )
-        }
+    val visibleItems = listState.layoutInfo.visibleItemsInfo
+    if (visibleItems.isEmpty()) return
+
+    val selectedItem = visibleItems.firstOrNull { it.index == selectedIndex }
+    val viewportHeight = size.height
+
+    if (selectedItem == null) {
+        drawRightRoundedRect(
+            color = color,
+            top = 0f,
+            bottom = viewportHeight,
+            topEndRadius = 0f,
+            bottomEndRadius = 0f
+        )
+        return
     }
+
+    val radius = RadiusLarge.toPx()
+    val selectedTop = selectedItem.offset.toFloat().coerceIn(0f, viewportHeight)
+    val selectedBottom = (selectedItem.offset + selectedItem.size).toFloat().coerceIn(0f, viewportHeight)
+    val firstVisibleIndex = visibleItems.first().index
+
+    if (selectedIndex > 0 && selectedTop > 0f) {
+        drawRightRoundedRect(
+            color = color,
+            top = 0f,
+            bottom = selectedTop,
+            topEndRadius = if (firstVisibleIndex == 0) radius else 0f,
+            bottomEndRadius = radius
+        )
+    }
+
+    if (selectedBottom < viewportHeight) {
+        drawRightRoundedRect(
+            color = color,
+            top = selectedBottom,
+            bottom = viewportHeight,
+            topEndRadius = radius,
+            bottomEndRadius = 0f
+        )
+    }
+}
+
+private fun DrawScope.drawRightRoundedRect(
+    color: Color,
+    top: Float,
+    bottom: Float,
+    topEndRadius: Float,
+    bottomEndRadius: Float
+) {
+    if (bottom <= top) return
+
+    val right = size.width
+    val height = bottom - top
+    val topRadius = topEndRadius.coerceAtMost(height / 2f)
+    val bottomRadius = bottomEndRadius.coerceAtMost(height / 2f)
+
+    val path = Path().apply {
+        moveTo(0f, top)
+        lineTo(right - topRadius, top)
+        if (topRadius > 0f) {
+            quadraticTo(right, top, right, top + topRadius)
+        } else {
+            lineTo(right, top)
+        }
+        lineTo(right, bottom - bottomRadius)
+        if (bottomRadius > 0f) {
+            quadraticTo(right, bottom, right - bottomRadius, bottom)
+        } else {
+            lineTo(right, bottom)
+        }
+        lineTo(0f, bottom)
+        close()
+    }
+
+    drawPath(path = path, color = color)
 }
 
 /**
@@ -464,32 +473,40 @@ private fun RightCategoryContent(
     categoryTrees: List<CategoryTree>,
     listState: LazyListState,
 ) {
-    AppLazyColumn(
-        listState = listState,
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp) // 增加项之间的间距
-    ) {
-        // 遍历所有一级分类
-        items(categoryTrees.size) { index ->
-            val category = categoryTrees[index]
+    BoxWithConstraints(modifier = modifier) {
+        val bottomPadding = maxHeight - 80.dp
 
-            // 分类区域整体包装，确保每个分类区域有足够的高度触发滚动监听
-            AppColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp) // 底部额外增加间距
-            ) {
-                // 分类标题作为分隔符
-                TitleWithLine(category.name)
+        AppLazyColumn(
+            listState = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 8.dp),
+            contentPadding = PaddingValues(
+                top = 16.dp,
+                bottom = bottomPadding.coerceAtLeast(16.dp)
+            ),
+            verticalArrangement = Arrangement.spacedBy(24.dp) // 增加项之间的间距
+        ) {
+            // 遍历所有一级分类
+            items(categoryTrees.size) { index ->
+                val category = categoryTrees[index]
 
-                Spacer(modifier = Modifier.height(8.dp)) // 标题和内容之间的间距
+                // 分类区域整体包装，确保每个分类区域有足够的高度触发滚动监听
+                AppColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp) // 底部额外增加间距
+                ) {
+                    // 分类标题作为分隔符
+                    TitleWithLine(category.name)
 
-                // 二级分类内容
-                if (category.children.isNotEmpty()) {
-                    CategorySection(categoryTree = category)
+                    Spacer(modifier = Modifier.height(8.dp)) // 标题和内容之间的间距
+
+                    // 二级分类内容
+                    if (category.children.isNotEmpty()) {
+                        CategorySection(categoryTree = category)
+                    }
                 }
             }
         }
@@ -580,14 +597,6 @@ private fun SubCategoryItem(
         )
     }
 }
-
-// 右上角圆角
-private val RightTopRoundedShape = RoundedCornerShape(
-    topStart = 0.dp,
-    topEnd = RadiusLarge,
-    bottomEnd = 0.dp,
-    bottomStart = 0.dp
-)
 
 /**
  * 分类界面浅色主题预览
