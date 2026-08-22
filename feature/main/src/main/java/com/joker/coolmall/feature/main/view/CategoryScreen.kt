@@ -29,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.AppColumn
 import com.joker.coolmall.core.designsystem.component.AppLazyColumn
 import com.joker.coolmall.core.designsystem.component.AppRow
@@ -84,9 +84,9 @@ internal fun CategoryRoute(
     viewModel: CategoryViewModel = hiltViewModel()
 ) {
     // 分类UI状态
-    val uiState by viewModel.categoryUiState.collectAsState()
+    val uiState by viewModel.categoryUiState.collectAsStateWithLifecycle()
     // 当前选中的分类索引
-    val selectedIndex by viewModel.selectedCategoryIndex.collectAsState()
+    val selectedIndex by viewModel.selectedCategoryIndex.collectAsStateWithLifecycle()
 
     CategoryScreen(
         uiState = uiState,

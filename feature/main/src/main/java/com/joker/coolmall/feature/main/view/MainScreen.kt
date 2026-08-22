@@ -14,18 +14,13 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.joker.coolmall.core.designsystem.theme.AppTheme
-import com.joker.coolmall.navigation.main.MainRoutes
 import com.joker.coolmall.feature.main.component.BottomNavigationBar
 import com.joker.coolmall.feature.main.model.TopLevelDestination
-import com.joker.coolmall.feature.main.viewmodel.MainViewModel
+import com.joker.coolmall.navigation.main.MainRoutes
 import kotlinx.coroutines.launch
 
 /**
@@ -33,7 +28,6 @@ import kotlinx.coroutines.launch
  *
  * @param sharedTransitionScope 共享转场作用域
  * @param animatedContentScope 动画内容作用域
- * @param viewModel 主界面ViewModel
  * @author Joker.X
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -41,17 +35,10 @@ import kotlinx.coroutines.launch
 internal fun MainRoute(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedContentScope: AnimatedContentScope? = null,
-    viewModel: MainViewModel = hiltViewModel()
 ) {
-    // 当前页面索引
-    val currentPageIndex by viewModel.currentPageIndex.collectAsState()
-
     MainScreen(
         sharedTransitionScope = sharedTransitionScope,
         animatedContentScope = animatedContentScope,
-        currentPageIndex = currentPageIndex,
-        onPageChanged = viewModel::updatePageIndex,
-        onNavigationItemSelected = viewModel::updateDestination
     )
 }
 
@@ -61,9 +48,6 @@ internal fun MainRoute(
  *
  * @param sharedTransitionScope 共享转场作用域
  * @param animatedContentScope 动画内容作用域
- * @param currentPageIndex 当前页面索引
- * @param onPageChanged 页面改变回调
- * @param onNavigationItemSelected 导航项选中回调
  * @author Joker.X
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -71,23 +55,16 @@ internal fun MainRoute(
 internal fun MainScreen(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedContentScope: AnimatedContentScope? = null,
-    currentPageIndex: Int = 0,
-    onPageChanged: (Int) -> Unit = {},
-    onNavigationItemSelected: (Int) -> Unit = {}
 ) {
     // 协程作用域
     val scope = rememberCoroutineScope()
+    val destinations = TopLevelDestination.entries
 
     // 创建分页器状态
     val pageState = rememberPagerState(
-        initialPage = currentPageIndex
+        initialPage = 0
     ) {
-        TopLevelDestination.entries.size
-    }
-
-    // 监听分页器当前页面变化
-    LaunchedEffect(pageState.currentPage) {
-        onPageChanged(pageState.currentPage)
+        destinations.size
     }
 
     Scaffold(
@@ -97,15 +74,15 @@ internal fun MainScreen(
             .exclude(WindowInsets.statusBars),
         bottomBar = {
             BottomNavigationBar(
-                destinations = TopLevelDestination.entries,
+                destinations = destinations,
                 onNavigateToDestination = { index ->
-                    // 通知选择了新的导航项
-                    onNavigationItemSelected(index)
-                    scope.launch {
-                        pageState.scrollToPage(index)
+                    if (index in destinations.indices && index != pageState.currentPage) {
+                        scope.launch {
+                            pageState.scrollToPage(index)
+                        }
                     }
                 },
-                currentPageIndex = currentPageIndex,
+                currentPageIndex = pageState.currentPage,
                 modifier = Modifier
             )
         }
@@ -141,15 +118,15 @@ private fun MainScreenContentView(
         modifier = Modifier
             .padding(paddingValues)
     ) { page: Int ->
-        when (page) {
-            0 -> HomeRoute(
+        when (TopLevelDestination.entries[page]) {
+            TopLevelDestination.HOME -> HomeRoute(
                 sharedTransitionScope = sharedTransitionScope,
                 animatedContentScope = animatedContentScope
             )
 
-            1 -> CategoryRoute()
-            2 -> CartRoute(navKey = MainRoutes.Cart())
-            3 -> MeRoute(
+            TopLevelDestination.CATEGORY -> CategoryRoute()
+            TopLevelDestination.CART -> CartRoute(navKey = MainRoutes.Cart())
+            TopLevelDestination.ME -> MeRoute(
                 sharedTransitionScope = sharedTransitionScope,
                 animatedContentScope = animatedContentScope
             )

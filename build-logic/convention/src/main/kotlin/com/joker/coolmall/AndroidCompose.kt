@@ -38,6 +38,7 @@ internal fun Project.configureAndroidCompose(
         // Compose 集成支持
         "implementation"(libs.findLibrary("androidx.activity.compose").get())
         "implementation"(libs.findLibrary("androidx.lifecycle.runtime.ktx").get())
+        "implementation"(libs.findLibrary("androidx.lifecycle.runtime.compose").get())
 
         // 开发调试工具
         "debugImplementation"(libs.findLibrary("androidx.ui.tooling").get())
