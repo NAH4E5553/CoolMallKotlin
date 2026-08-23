@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -189,6 +190,7 @@ internal fun CartScreen(
                     onCheckAllChanged = onToggleSelectAll,
                     onDeleteClick = handleDeleteWithAnimation,
                     onSettleClick = onSettleClick,
+                    applyNavigationBarPadding = showBackIcon,
                 )
             }
         }
@@ -288,6 +290,7 @@ private fun CartContentView(
  * @param onCheckAllChanged 切换全选状态回调
  * @param onDeleteClick 删除按钮点击回调
  * @param onSettleClick 结算按钮点击回调
+ * @param applyNavigationBarPadding 是否为独立购物车页面避让系统导航栏
  * @param modifier 修饰符
  * @author Joker.X
  */
@@ -300,6 +303,7 @@ private fun CartBottomBar(
     onCheckAllChanged: () -> Unit,
     onDeleteClick: () -> Unit,
     onSettleClick: () -> Unit,
+    applyNavigationBarPadding: Boolean,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -312,6 +316,13 @@ private fun CartBottomBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (applyNavigationBarPadding) {
+                        Modifier.navigationBarsPadding()
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(SpacePaddingMedium)
         ) {
             CheckButton(
