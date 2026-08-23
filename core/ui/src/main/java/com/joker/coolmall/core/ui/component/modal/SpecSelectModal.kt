@@ -163,7 +163,9 @@ fun SpecSelectModal(
         visible = visible,
         onDismiss = onDismiss,
         title = stringResource(id = R.string.modal_select_spec),
-        sheetState = sheetState
+        sheetState = sheetState,
+        showDragIndicator = false,
+        sheetGesturesEnabled = false,
     ) {
         BaseNetWorkView(
             uiState = uiState,
