@@ -50,10 +50,26 @@ class OrderListViewModel @AssistedInject constructor(
     private val orderRepository: OrderRepository,
     private val commonRepository: CommonRepository,
 ) : BaseViewModel() {
+    private enum class LoadType {
+        Initial,
+        Refresh,
+        SilentRefresh,
+        LoadMore,
+    }
+
     /**
      * 刷新结果监听任务
      */
     private var refreshObserveJob: Job? = null
+
+    /** 每个标签页当前执行中的分页请求。 */
+    private val requestJobs = MutableList<Job?>(OrderStatus.entries.size) { null }
+
+    /** 每个标签页加载成功提示对应的延迟提交任务。 */
+    private val stateUpdateJobs = MutableList<Job?>(OrderStatus.entries.size) { null }
+
+    /** 每个标签页的请求序号，用于阻止旧请求或旧延迟任务提交状态。 */
+    private val requestSequences = MutableList(OrderStatus.entries.size) { 0L }
 
     /**
      * 当前选中的标签索引
@@ -232,7 +248,7 @@ class OrderListViewModel @AssistedInject constructor(
             resultEvents(OrderChangedResultKey).collect { refreshResult: RefreshResult ->
                 if (refreshResult.refresh == true) {
                     // 刷新全部标签页
-                    refreshSpecificTabs(listOf(0, 1, 2, 3, 4, 5, 6))
+                    refreshSpecificTabs(OrderStatus.entries.indices.toList())
                 }
             }
         }
@@ -243,8 +259,8 @@ class OrderListViewModel @AssistedInject constructor(
      */
     private fun resetTabLoadState(tabIndex: Int) {
         if (tabIndex in tabDataLoaded.indices) {
+            cancelTabRequest(tabIndex)
             tabDataLoaded[tabIndex] = false
-            pageIndices[tabIndex] = 1
         }
     }
 
@@ -263,7 +279,13 @@ class OrderListViewModel @AssistedInject constructor(
         // 如果当前显示的标签页在刷新列表中，则立即刷新
         val currentTab = _selectedTabIndex.value
         if (currentTab in tabIndices) {
-            loadTabDataIfNeeded(currentTab)
+            tabDataLoaded[currentTab] = true
+            startListRequest(
+                tabIndex = currentTab,
+                requestPage = 1,
+                loadType = LoadType.SilentRefresh,
+                cancelCurrent = false,
+            )
         }
     }
 
@@ -271,38 +293,90 @@ class OrderListViewModel @AssistedInject constructor(
      * 如果标签页数据尚未加载，则加载数据
      */
     private fun loadTabDataIfNeeded(tabIndex: Int) {
+        if (tabIndex !in tabDataLoaded.indices) return
+
         if (!tabDataLoaded[tabIndex]) {
             // 标记该标签页已尝试加载数据
             tabDataLoaded[tabIndex] = true
             // 加载该标签页的数据
-            loadListData(tabIndex)
+            startListRequest(
+                tabIndex = tabIndex,
+                requestPage = 1,
+                loadType = LoadType.Initial,
+                cancelCurrent = true,
+            )
         }
     }
 
     /**
-     * 加载指定标签页的列表数据
+     * 取消指定标签页的分页请求和延迟状态任务。
      */
-    private fun loadListData(tabIndex: Int) {
-        // 设置UI状态 - 仅首次加载显示加载中状态
-        if (_loadMoreStates[tabIndex].value == LoadMoreState.Loading && pageIndices[tabIndex] == 1) {
-            _uiStates[tabIndex].value = BaseNetWorkListUiState.Loading
+    private fun cancelTabRequest(tabIndex: Int) {
+        requestSequences[tabIndex]++
+        requestJobs[tabIndex]?.cancel()
+        requestJobs[tabIndex] = null
+        stateUpdateJobs[tabIndex]?.cancel()
+        stateUpdateJobs[tabIndex] = null
+    }
+
+    /**
+     * 使用不可变页码快照加载指定标签页的数据。
+     */
+    private fun startListRequest(
+        tabIndex: Int,
+        requestPage: Int,
+        loadType: LoadType,
+        cancelCurrent: Boolean,
+    ) {
+        if (cancelCurrent) {
+            cancelTabRequest(tabIndex)
+        } else if (requestJobs[tabIndex]?.isActive == true) {
+            return
         }
 
-        ResultHandler.handleResult(
+        val requestId = ++requestSequences[tabIndex]
+        val previousLoadMoreState = _loadMoreStates[tabIndex].value
+
+        when (loadType) {
+            LoadType.Initial -> {
+                _uiStates[tabIndex].value = BaseNetWorkListUiState.Loading
+                _loadMoreStates[tabIndex].value = LoadMoreState.Loading
+            }
+
+            LoadType.Refresh -> _refreshingStates[tabIndex].value = true
+            LoadType.SilentRefresh -> Unit
+            LoadType.LoadMore -> _loadMoreStates[tabIndex].value = LoadMoreState.Loading
+        }
+
+        requestJobs[tabIndex] = ResultHandler.handleResult(
             showToast = false,
             scope = viewModelScope,
             flow = orderRepository.getOrderPage(
                 OrderPageRequest(
-                    page = pageIndices[tabIndex],
+                    page = requestPage,
                     size = pageSize,
                     status = getStatusFilter(tabIndex)
                 )
             ).asResult(),
             onSuccess = { response ->
-                handleSuccess(tabIndex, response.data)
+                if (requestId == requestSequences[tabIndex]) {
+                    handleSuccess(
+                        tabIndex = tabIndex,
+                        requestPage = requestPage,
+                        loadType = loadType,
+                        requestId = requestId,
+                        data = response.data,
+                    )
+                }
             },
-            onError = { message, exception ->
-                handleError(tabIndex, message, exception)
+            onError = { _, _ ->
+                if (requestId == requestSequences[tabIndex]) {
+                    handleError(
+                        tabIndex = tabIndex,
+                        loadType = loadType,
+                        previousLoadMoreState = previousLoadMoreState,
+                    )
+                }
             }
         )
     }
@@ -310,7 +384,13 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 处理成功响应
      */
-    private fun handleSuccess(tabIndex: Int, data: NetworkPageData<Order>?) {
+    private fun handleSuccess(
+        tabIndex: Int,
+        requestPage: Int,
+        loadType: LoadType,
+        requestId: Long,
+        data: NetworkPageData<Order>?,
+    ) {
         val newList = data?.list ?: emptyList()
         val pagination = data?.pagination
 
@@ -318,7 +398,7 @@ class OrderListViewModel @AssistedInject constructor(
         val hasNextPage = if (pagination != null) {
             val total = pagination.total ?: 0
             val size = pagination.size ?: pageSize
-            val currentPageNum = pagination.page ?: pageIndices[tabIndex]
+            val currentPageNum = pagination.page ?: requestPage
 
             // 当前页的数据量 * 当前页码 < 总数据量，说明还有下一页
             size * currentPageNum < total
@@ -326,15 +406,17 @@ class OrderListViewModel @AssistedInject constructor(
             false
         }
 
-        when {
-            pageIndices[tabIndex] == 1 -> {
+        when (loadType) {
+            LoadType.Initial, LoadType.Refresh, LoadType.SilentRefresh -> {
                 // 刷新或首次加载 - 重置列表
+                pageIndices[tabIndex] = requestPage
                 _listDataMap[tabIndex].value = newList
                 _refreshingStates[tabIndex].value = false
 
                 // 更新加载状态
                 if (newList.isEmpty()) {
                     _uiStates[tabIndex].value = BaseNetWorkListUiState.Empty
+                    _loadMoreStates[tabIndex].value = LoadMoreState.NoMore
                 } else {
                     _uiStates[tabIndex].value = BaseNetWorkListUiState.Success
                     _loadMoreStates[tabIndex].value =
@@ -342,14 +424,17 @@ class OrderListViewModel @AssistedInject constructor(
                 }
             }
 
-            else -> {
+            LoadType.LoadMore -> {
                 // 加载更多 - 先显示加载成功，延迟更新数据
-                viewModelScope.launch {
+                stateUpdateJobs[tabIndex] = viewModelScope.launch {
                     _loadMoreStates[tabIndex].value = LoadMoreState.Success
                     delay(400)
-                    _listDataMap[tabIndex].value = _listDataMap[tabIndex].value + newList
-                    _loadMoreStates[tabIndex].value =
-                        if (hasNextPage) LoadMoreState.PullToLoad else LoadMoreState.NoMore
+                    if (requestId == requestSequences[tabIndex]) {
+                        pageIndices[tabIndex] = requestPage
+                        _listDataMap[tabIndex].value = _listDataMap[tabIndex].value + newList
+                        _loadMoreStates[tabIndex].value =
+                            if (hasNextPage) LoadMoreState.PullToLoad else LoadMoreState.NoMore
+                    }
                 }
             }
         }
@@ -358,19 +443,28 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 处理错误响应
      */
-    private fun handleError(tabIndex: Int, message: String?, exception: Throwable?) {
+    private fun handleError(
+        tabIndex: Int,
+        loadType: LoadType,
+        previousLoadMoreState: LoadMoreState,
+    ) {
         _refreshingStates[tabIndex].value = false
 
-        if (pageIndices[tabIndex] == 1) {
-            // 首次加载或刷新失败
-            if (_listDataMap[tabIndex].value.isEmpty()) {
-                _uiStates[tabIndex].value = BaseNetWorkListUiState.Error
+        when (loadType) {
+            LoadType.Initial, LoadType.Refresh, LoadType.SilentRefresh -> {
+                // 首次加载或刷新失败
+                if (_listDataMap[tabIndex].value.isEmpty()) {
+                    _uiStates[tabIndex].value = BaseNetWorkListUiState.Error
+                } else {
+                    _uiStates[tabIndex].value = BaseNetWorkListUiState.Success
+                }
+                _loadMoreStates[tabIndex].value = when (previousLoadMoreState) {
+                    LoadMoreState.Loading, LoadMoreState.Success -> LoadMoreState.PullToLoad
+                    else -> previousLoadMoreState
+                }
             }
-            _loadMoreStates[tabIndex].value = LoadMoreState.PullToLoad
-        } else {
-            // 加载更多失败，回退页码
-            pageIndices[tabIndex]--
-            _loadMoreStates[tabIndex].value = LoadMoreState.Error
+
+            LoadType.LoadMore -> _loadMoreStates[tabIndex].value = LoadMoreState.Error
         }
     }
 
@@ -380,9 +474,15 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun retryRequest(tabIndex: Int = _selectedTabIndex.value) {
-        pageIndices[tabIndex] = 1
-        _loadMoreStates[tabIndex].value = LoadMoreState.Loading
-        loadListData(tabIndex)
+        if (tabIndex !in pageIndices.indices) return
+
+        tabDataLoaded[tabIndex] = true
+        startListRequest(
+            tabIndex = tabIndex,
+            requestPage = 1,
+            loadType = LoadType.Initial,
+            cancelCurrent = true,
+        )
     }
 
     /**
@@ -391,14 +491,15 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun onRefresh(tabIndex: Int = _selectedTabIndex.value) {
-        // 如果正在加载中，则不重复请求
-        if (_loadMoreStates[tabIndex].value == LoadMoreState.Loading) {
-            return
-        }
+        if (tabIndex !in pageIndices.indices) return
 
-        _refreshingStates[tabIndex].value = true
-        pageIndices[tabIndex] = 1
-        loadListData(tabIndex)
+        tabDataLoaded[tabIndex] = true
+        startListRequest(
+            tabIndex = tabIndex,
+            requestPage = 1,
+            loadType = LoadType.Refresh,
+            cancelCurrent = true,
+        )
     }
 
     /**
@@ -407,17 +508,23 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun onLoadMore(tabIndex: Int = _selectedTabIndex.value) {
+        if (tabIndex !in pageIndices.indices) return
+
         // 只有在可加载更多和加载失败状态下才能触发加载
-        if (_loadMoreStates[tabIndex].value == LoadMoreState.Loading ||
+        if (requestJobs[tabIndex]?.isActive == true ||
+            _loadMoreStates[tabIndex].value == LoadMoreState.Loading ||
             _loadMoreStates[tabIndex].value == LoadMoreState.NoMore ||
             _loadMoreStates[tabIndex].value == LoadMoreState.Success
         ) {
             return
         }
 
-        _loadMoreStates[tabIndex].value = LoadMoreState.Loading
-        pageIndices[tabIndex]++
-        loadListData(tabIndex)
+        startListRequest(
+            tabIndex = tabIndex,
+            requestPage = pageIndices[tabIndex] + 1,
+            loadType = LoadType.LoadMore,
+            cancelCurrent = false,
+        )
     }
 
     /**
