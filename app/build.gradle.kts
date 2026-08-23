@@ -1,6 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.coolmall.android.application.compose)
     alias(libs.plugins.coolmall.hilt)
+}
+
+val keystorePropertiesFile = file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.isFile) {
+        keystorePropertiesFile.inputStream().use(::load)
+    }
+}
+val signingProperty: (String) -> String = { name ->
+    keystoreProperties.getProperty(name)?.takeIf(String::isNotBlank)
+        ?: error("Missing signing property '$name' in ${keystorePropertiesFile.path}")
 }
 
 android {
@@ -27,37 +40,34 @@ android {
     }
 
     signingConfigs {
-        // 通用签名配置
-        // 实际使用时请替换为自己的签名文件
-        create("common") {
-            // 哪个签名文件
-            storeFile = file("joker_open_key.keystore")
-            // 密钥别名
-            keyAlias = "joker_open_key"
-            // 密钥密码
-            keyPassword = "joker123456"
-            // 签名文件密码
-            storePassword = "joker123456"
+        if (keystorePropertiesFile.isFile) {
+            create("common") {
+                storeFile = file(signingProperty("storeFile"))
+                keyAlias = signingProperty("keyAlias")
+                keyPassword = signingProperty("keyPassword")
+                storePassword = signingProperty("storePassword")
 
-            // 启用所有签名方案以确保最大兼容性
-            enableV1Signing = true  // JAR 签名 (Android 1.0+)
-            enableV2Signing = true  // APK 签名 v2 (Android 7.0+)
-            enableV3Signing = true  // APK 签名 v3 (Android 9.0+)
-            enableV4Signing = true  // APK 签名 v4 (Android 11.0+)
+                // 启用所有签名方案以确保最大兼容性
+                enableV1Signing = true  // JAR 签名 (Android 1.0+)
+                enableV2Signing = true  // APK 签名 v2 (Android 7.0+)
+                enableV3Signing = true  // APK 签名 v3 (Android 9.0+)
+                enableV4Signing = true  // APK 签名 v4 (Android 11.0+)
+            }
         }
     }
 
     // 构建类型配置
     buildTypes {
         debug {
-            // debug 模式下也使用正式签名配置 - 方便调试支付以及三方登录等功能
-            signingConfig = signingConfigs["common"] // 没有签名请注释掉这行使用默认签名
+            // 本地提供签名配置时复用正式签名，便于调试支付与第三方登录；否则使用默认 debug 签名
+            signingConfigs.findByName("common")?.let { signingConfig = it }
             // debug 模式下包名后缀
             applicationIdSuffix = ".debug"
         }
 
         release {
-            signingConfig = signingConfigs["common"] // 没有签名请注释掉这行使用默认签名
+            // 未提供本地签名配置时生成未签名产物，避免将密钥或密码写入版本库
+            signingConfigs.findByName("common")?.let { signingConfig = it }
             // 是否启用代码压缩
             isMinifyEnabled = true
             // 资源压缩
