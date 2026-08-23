@@ -44,8 +44,15 @@
 
 本模块依赖 `core:designsystem`、`core:model`、Serialization、Toaster、XXPermissions、MMKV 和 Timber。不要依赖 Feature、Repository、network、database 或 app。
 
+## 测试重点
+
+- `ValidationUtil`、无 Android 依赖的时间计算和纯格式转换优先使用 JVM 单元测试，覆盖空值、边界值和非法输入。
+- `TimeUtils` 测试固定 Locale、时区和时间戳单位，不能依赖运行机器的默认配置。
+- MMKV 初始化、权限、通知渠道、PendingIntent 和 Toast 样式属于平台行为，使用 Android 测试或对应系统版本的真机/模拟器验证。
+- 平台测试不得真实发送敏感验证码、申请无关权限或污染用户默认 MMKV；使用独立测试数据和可清理环境。
+
 ```bash
-./gradlew :core:util:compileDevDebugKotlin
+./gradlew :core:util:compileDevDebugKotlin :core:util:testDevDebugUnitTest
 ```
 
 权限、通知和存储改动还需要对应 Android 版本的真机/模拟器验证。

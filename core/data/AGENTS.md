@@ -43,8 +43,15 @@ Feature ViewModel -> Repository -> Network/DataBase/Store DataSource
 
 修改公共 Repository 方法或 `AppState` 状态时，先搜索所有调用方；它们是跨 Feature API。
 
+## 测试重点
+
+- Repository 测试使用 Fake DataSource 或可控测试实现，不连接真实后端、Room 文件或用户 MMKV。
+- 新增或修改一次性网络 Flow 时，覆盖成功、业务失败、异常和协程取消，不让取消被转换为普通失败。
+- 数据库 Repository 需要验证查询 Flow 保持响应式，写入方法正确委托 DataSource，且不会重复执行领域映射。
+- `AppState` 变更必须覆盖初始化、登录、资料更新、Token 更新和退出，验证内存 `StateFlow` 与 Store 同步。
+
 最小验证：
 
 ```bash
-./gradlew :core:data:compileDevDebugKotlin
+./gradlew :core:data:compileDevDebugKotlin :core:data:testDevDebugUnitTest
 ```

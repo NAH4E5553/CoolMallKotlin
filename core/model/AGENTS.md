@@ -34,8 +34,15 @@
 
 本模块只依赖 Kotlin Serialization，不应依赖其他业务 Core、Compose、Hilt、Retrofit、Room、Feature 或 app。`ExperimentalSerializationApi` 已在所有 source set 开启；新增用法仍应控制在确有必要的序列化代码内。
 
+## 测试重点
+
+- 修改序列化字段、默认值、可空性或自定义 Serializer 时，使用固定 JSON fixture 覆盖当前格式、缺失字段、未知字段和错误输入。
+- 修改 `NetworkResponse`、`NetworkPageData` 或 `NetworkPageMeta` 时，覆盖成功、业务失败、空 data 和分页元数据缺失场景。
+- 金额、时间戳和状态值测试必须明确单位与边界值，避免只验证理想输入。
+- Preview 数据测试只检查 fixture 自洽性；Preview fixture 不能替代生产序列化契约测试。
+
 最小验证：
 
 ```bash
-./gradlew :core:model:compileDevDebugKotlin
+./gradlew :core:model:compileDevDebugKotlin :core:model:testDevDebugUnitTest
 ```

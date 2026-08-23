@@ -35,12 +35,25 @@ Feature 专属、只使用一次或包含页面业务流程的组件留在对应
 - 修改 NestedScroll、阈值或动画时验证列表、瀑布流、顶部 AppBar 联动、快速手势和刷新结束。
 - 传入 LazyListState/GridState 时应复用调用方状态，不能额外创建第二个竞争状态源。
 
+## Insets、弹窗与长内容
+
+- 固定在窗口底部的操作栏必须处理系统导航栏 Insets，并验证经典三键导航和手势导航；不能只依赖设备默认留白。
+- 同一层级只消费一次 Insets，避免 Scaffold、页面和底栏重复添加 padding。
+- BottomModal 的标题、长内容和底部操作区要有明确约束；内容超出可用高度时必须可滚动，操作按钮不能被压缩成零高度或一条线。
+- 弹窗内 LazyList/Grid 与 BottomSheet 拖动要明确 NestedScroll 所有权，验证顶部下拉、列表上下滑和快速连续手势不会弹跳。
+- 涉及输入框时同时验证 IME、导航栏和 BottomModal 的组合 Insets。
+
+## 测试重点
+
+- 可独立的状态计算和阈值逻辑使用 JVM 单元测试；交互、语义和布局行为使用 Compose UI 测试或目标页面验证。
+- 修改刷新、加载更多、弹窗或底部操作栏时，至少覆盖空数据、长内容、字体缩放、经典三键导航和手势导航。
+
 ## 模块边界与验证
 
 本模块可依赖 `core:designsystem`、`core:model`、`core:common`、`core:util`、Coil 和 Lottie；不依赖 Feature、Repository、network、database 或 app。
 
 ```bash
-./gradlew :core:ui:compileDevDebugKotlin
+./gradlew :core:ui:compileDevDebugKotlin :core:ui:testDevDebugUnitTest
 ```
 
 视觉变更还需检查 Preview、亮/暗主题、字体缩放和目标页面。

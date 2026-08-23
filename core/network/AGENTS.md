@@ -47,8 +47,16 @@ Repository -> *NetworkDataSource interface -> implementation -> Retrofit Service
 
 本模块依赖 `core:model` 与 `core:datastore`，不依赖 `core:data`、Feature、Compose 或 app。
 
+## 测试重点
+
+- Service 契约测试覆盖 HTTP 方法、路径、Path/Query/Body 和响应泛型；测试不访问真实生产接口。
+- DataSource 测试验证参数原样委托、业务失败保持原语义，以及协程取消继续向上传播。
+- JSON 配置或模型联动变更要使用固定响应 fixture 验证未知字段、缺省值和错误响应。
+- `AuthInterceptor` 测试使用虚构 token，验证 Header 注入和脱敏；日志、断言消息和 fixture 都不得包含真实凭据。
+- 上传测试覆盖单图、多图顺序、空结果、异常、取消和流关闭，不读取真实相册或连接真实 OSS。
+
 ```bash
-./gradlew :core:network:compileDevDebugKotlin
+./gradlew :core:network:compileDevDebugKotlin :core:network:testDevDebugUnitTest
 ```
 
 接口变更还需验证真实请求路径、序列化、认证头、错误响应和对应 Repository。
