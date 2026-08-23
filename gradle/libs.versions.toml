@@ -26,6 +26,10 @@ agp = "9.0.1"
 # Kotlin 编译器: https://kotlinlang.org/docs/releases.html
 # 注意: 需要和 hilt 版本对应
 kotlin = "2.3.10"
+# Spotless 代码格式检查插件: https://plugins.gradle.org/plugin/com.diffplug.spotless
+spotless = "8.10.0"
+# ktlint Kotlin 格式化引擎: https://github.com/ktlint/ktlint
+ktlint = "1.8.0"
 
 # Android 核心库版本
 # AndroidX Core KTX: https://developer.android.com/jetpack/androidx/releases/core
@@ -240,6 +244,7 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
 # 依赖注入相关插件
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

@@ -16,4 +16,23 @@ plugins {
     alias(libs.plugins.ksp) apply false
     // Android库插件，用于构建Android库模块
     alias(libs.plugins.android.library) apply false
+    // 统一检查 Kotlin 与 Gradle Kotlin DSL 代码格式
+    alias(libs.plugins.spotless)
+}
+
+spotless {
+    // 仅检查相对主分支新增或修改过的文件，逐步收敛存量格式问题
+    ratchetFrom("origin/main")
+
+    kotlin {
+        target("**/*.kt")
+        targetExclude("**/build/**", "**/generated/**")
+        ktlint(libs.versions.ktlint.get())
+    }
+
+    kotlinGradle {
+        target("**/*.gradle.kts")
+        targetExclude("**/build/**", "**/.gradle/**")
+        ktlint(libs.versions.ktlint.get())
+    }
 }
