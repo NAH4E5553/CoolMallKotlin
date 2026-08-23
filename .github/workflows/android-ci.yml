@@ -94,3 +94,24 @@ jobs:
           path: "**/build/reports/lint-results-*"
           if-no-files-found: ignore
           retention-days: 7
+
+  code-format:
+    name: Code Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Check code format
+        run: ./gradlew spotlessCheck --no-daemon --stacktrace
