@@ -2,7 +2,7 @@
 
 ## 适用范围
 
-本文件适用于 `core/common/**`，并补充仓库根目录的 `AGENTS.md`。本模块当前包含共享 ViewModel 基类、网络页面状态、主题偏好和 QQ 登录管理。
+本文件适用于 `core/common/**`，并补充仓库根目录与 `core/AGENTS.md`。本模块当前包含共享 ViewModel 基类、网络页面状态、主题偏好和 QQ 登录管理。
 
 ## 模块职责
 
@@ -15,7 +15,7 @@
 
 ## ViewModel 与状态规则
 
-- 新的网络页面优先沿用 `BaseNetWorkViewModel<T>`；分页列表沿用 `BaseNetWorkListViewModel<T>`。
+- 当页面符合单请求或单列表状态机时，优先沿用 `BaseNetWorkViewModel<T>` 或 `BaseNetWorkListViewModel<T>`。多数据源、多 Tab 或组合状态页面不要为了继承而强行套用基类。
 - 子类通过 `requestApiFlow()` 或 `requestListData(page, pageSize)` 提供 Repository Flow，不在基类中直接访问 Service 或 DAO。
 - 对外只暴露 `StateFlow`；新增的 `MutableStateFlow` 必须保持 `private` 或 `protected`，不要扩大现有可变状态的可见性。
 - 首次加载、刷新、加载更多和错误回退的语义必须保持独立。分页子类必须使用参数中的页码快照构造请求，不能在异步请求中再次读取或提前递增 `currentPage`。
@@ -38,15 +38,23 @@
 - `QQLoginManager` 必须使用 Application Context 初始化，Activity 只用于发起授权。
 - 登录结果继续通过只读 `StateFlow<QQLoginResult?>` 分发，消费完成后调用 `clearLoginResult()`。
 - 不记录或持久化 access token、openId、完整授权响应。
-- 修改 `QQ_APP_ID`、SDK 回调或 Manifest 组件时，同步检查 `app` 初始化、登录 Feature、`core/common/src/main/AndroidManifest.xml` 和 `TENCENT_APPID` placeholder。
+- 修改 QQ App ID、SDK 回调或 Manifest 组件时，同步检查 `AppConfig.QQ_APP_ID`、`build.gradle.kts` 的 `TENCENT_APPID`、`core/common/src/main/AndroidManifest.xml`、app 初始化和登录 Feature；两处 ID 值必须一致，Manifest scheme 必须继续引用对应 placeholder。
 - QQ 登录相关变更需要真机验证回调、取消、失败和 Activity 重建。
+
+## 测试重点
+
+- 修改网络基类时，必须覆盖首次加载、刷新、加载更多、失败重试和空列表状态。
+- 必须验证新请求替换旧请求、取消后旧结果不能提交、页码只在成功后推进，以及最少加载时长的延迟任务不会覆盖新状态。
+- `requestListData(page, pageSize)` 的测试必须证明使用传入页码快照，而不是异步读取共享 `currentPage`。
+- 修改导航结果监听时，验证重复注册不会产生多个 collector。
+- `BaseNetWorkListViewModelTest` 是当前分页回归基线；修改相关状态机时同步更新测试。
 
 ## 依赖与构建
 
-本模块使用 `coolmall.android.library`、Hilt、Navigation3，并依赖 `core:model`、`core:navigation`、`core:data`、`core:result`、`core:util` 和本地 QQ SDK。不要仅为 Feature 便利新增向上的模块依赖。
+本模块使用 `coolmall.android.library`、Hilt、Navigation3，并依赖 `core:model`、`core:navigation`、`core:data`、`core:result`、`core:util` 和本地 QQ SDK；协程测试库仅用于 `src/test`。不要仅为 Feature 便利新增向上的模块依赖。
 
 最小验证：
 
 ```bash
-./gradlew :core:common:compileDevDebugKotlin
+./gradlew :core:common:compileDevDebugKotlin :core:common:testDevDebugUnitTest
 ```

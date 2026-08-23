@@ -31,10 +31,15 @@
 - 具有应用业务语义的复用组件放 `core:ui`；Feature 专属组件留在对应 Feature。
 - 不在设计 Token 中直接访问 MMKV；外部将解析后的 `themeColor` 和 `darkTheme` 传给 `AppTheme`。
 
+## 测试与视觉验证
+
+- Token 或主题计算中存在纯逻辑时优先增加 JVM 单元测试。
+- 视觉修改至少检查亮色、暗色、一个非默认主题色、字体缩放和 RTL 布局。
+- 布局封装变更要检查调用方 Modifier、系统栏 Insets 和无障碍语义，不引入第二套滚动状态。
+- 项目当前没有截图测试基础设施，不为单次修改擅自引入新框架；使用 Preview 和目标页面验证现有视觉契约。
+
 最小验证：
 
 ```bash
-./gradlew :core:designsystem:compileDevDebugKotlin
+./gradlew :core:designsystem:compileDevDebugKotlin :core:designsystem:testDevDebugUnitTest
 ```
-
-视觉改动还需至少检查亮色、暗色和一种非默认主题色。

@@ -35,6 +35,13 @@
 
 本模块依赖 `core:model`、`core:util` 和 Serialization，不依赖 Feature、Compose、Repository 或 app。
 
+## 测试重点
+
+- `asResult()` 必须保持 Loading 在前、值转为 Success、普通异常转为 Error、`CancellationException` 继续抛出。
+- `ResultHandler` 的不同入口分别覆盖业务成功、业务失败、空 data、异常和取消，验证回调不会串用。
+- 修改 `onFinally` 或 Job 返回语义时，验证成功、失败和取消后的调用次数与顺序。
+- `ResultExtTest` 与 `ResultHandlerTest` 是当前统一结果处理的回归基线，修改公共行为时必须同步更新。
+
 ```bash
-./gradlew :core:result:compileDevDebugKotlin
+./gradlew :core:result:compileDevDebugKotlin :core:result:testDevDebugUnitTest
 ```

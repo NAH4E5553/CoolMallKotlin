@@ -39,10 +39,17 @@ AppDatabase -> DAO -> Entity
 
 本模块可依赖 `core:model` 与 Room/Serialization，不依赖 network、Feature、Compose 或 app。不在这里实现远端同步、Toast、导航和页面状态。
 
+## 测试重点
+
+- DAO 行为测试覆盖插入、更新、冲突策略、排序、删除粒度和持续观察 Flow，不只验证 SQL 能执行。
+- `CartSpecConverter` 变更必须使用已发布格式样例验证旧 JSON 可解码，并覆盖损坏数据的当前回退行为。
+- 修改 Schema 时保留旧版本 schema，使用 Room Migration 测试从受支持旧版本升级到最新版本，并校验关键数据仍然存在。
+- Migration 测试需要设备或模拟器时使用 `androidTestImplementation` 和 `connectedDevDebugAndroidTest`；不要把 Room 测试库放入生产依赖。
+
 最小验证：
 
 ```bash
-./gradlew :core:database:compileDevDebugKotlin
+./gradlew :core:database:compileDevDebugKotlin :core:database:testDevDebugUnitTest
 ```
 
-涉及数据库结构时还必须比较 schema、验证 Migration，并安装旧版本数据后执行升级验证。
+涉及数据库结构时还必须比较 schema、执行 Migration 测试，并在可用设备上验证旧版本数据升级。

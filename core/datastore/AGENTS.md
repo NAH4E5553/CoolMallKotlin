@@ -31,8 +31,15 @@
 
 新增一类持久化数据时，按“接口、实现、稳定 key、序列化策略、Hilt 绑定、清除策略”成套实现，并检查退出登录是否需要清除它。
 
+## 测试重点
+
+- Auth 存储测试覆盖首次读取、缓存命中、保存后缓存更新、清除后缓存失效和损坏 JSON 回退。
+- User 存储测试覆盖完整保存、局部更新、未知字段兼容、非法字段类型和清除行为。
+- 序列化测试使用虚构 token 和用户资料，禁止复制真实账号数据到 fixture、日志或失败消息。
+- 修改 key 或 JSON 结构时，加入旧格式兼容或迁移测试；不能只验证新安装场景。
+
 最小验证：
 
 ```bash
-./gradlew :core:datastore:compileDevDebugKotlin
+./gradlew :core:datastore:compileDevDebugKotlin :core:datastore:testDevDebugUnitTest
 ```
