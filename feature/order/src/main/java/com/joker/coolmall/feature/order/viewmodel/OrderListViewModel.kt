@@ -15,13 +15,12 @@ import com.joker.coolmall.core.model.request.CancelOrderRequest
 import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.request.OrderPageRequest
 import com.joker.coolmall.core.model.response.NetworkPageData
-import com.joker.coolmall.core.navigation.*
-import com.joker.coolmall.navigation.goods.GoodsNavigator
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.feature.order.model.OrderStatus
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.order.OrderChangedResultKey
+import com.joker.coolmall.navigation.goods.GoodsNavigator
 import com.joker.coolmall.navigation.navigate
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
+import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
@@ -68,8 +67,8 @@ class OrderListViewModel @AssistedInject constructor(
     /** 每个标签页加载成功提示对应的延迟提交任务。 */
     private val stateUpdateJobs = MutableList<Job?>(OrderStatus.entries.size) { null }
 
-    /** 每个标签页的请求序号，用于阻止旧请求或旧延迟任务提交状态。 */
-    private val requestSequences = MutableList(OrderStatus.entries.size) { 0L }
+    /** 每个标签页相互隔离的已提交页码和请求序号。 */
+    private val pagingRequestTracker = OrderPagingRequestTracker(OrderStatus.entries.size)
 
     /**
      * 当前选中的标签索引
@@ -82,11 +81,6 @@ class OrderListViewModel @AssistedInject constructor(
      */
     private val _isAnimatingTabChange = MutableStateFlow(false)
     val isAnimatingTabChange: StateFlow<Boolean> = _isAnimatingTabChange.asStateFlow()
-
-    /**
-     * 每个标签页的页码
-     */
-    private val pageIndices = MutableList(OrderStatus.entries.size) { 1 }
 
     /**
      * 标记每个标签页是否已加载过数据
@@ -157,7 +151,7 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 当前要取消的订单ID
      */
-    private var _currentCancelOrderId: Long = 0L
+    private var currentCancelOrderId: Long = 0L
 
     /**
      * 确认收货弹窗的显示状态
@@ -168,7 +162,7 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 当前要确认收货的订单ID
      */
-    private var _currentConfirmOrderId: Long = 0L
+    private var currentConfirmOrderId: Long = 0L
 
     /**
      * 再次购买弹窗的显示状态
@@ -312,7 +306,7 @@ class OrderListViewModel @AssistedInject constructor(
      * 取消指定标签页的分页请求和延迟状态任务。
      */
     private fun cancelTabRequest(tabIndex: Int) {
-        requestSequences[tabIndex]++
+        pagingRequestTracker.invalidate(tabIndex)
         requestJobs[tabIndex]?.cancel()
         requestJobs[tabIndex] = null
         stateUpdateJobs[tabIndex]?.cancel()
@@ -322,19 +316,14 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 使用不可变页码快照加载指定标签页的数据。
      */
-    private fun startListRequest(
-        tabIndex: Int,
-        requestPage: Int,
-        loadType: LoadType,
-        cancelCurrent: Boolean,
-    ) {
+    private fun startListRequest(tabIndex: Int, requestPage: Int, loadType: LoadType, cancelCurrent: Boolean) {
         if (cancelCurrent) {
             cancelTabRequest(tabIndex)
         } else if (requestJobs[tabIndex]?.isActive == true) {
             return
         }
 
-        val requestId = ++requestSequences[tabIndex]
+        val requestToken = pagingRequestTracker.startRequest(tabIndex, requestPage)
         val previousLoadMoreState = _loadMoreStates[tabIndex].value
 
         when (loadType) {
@@ -344,7 +333,9 @@ class OrderListViewModel @AssistedInject constructor(
             }
 
             LoadType.Refresh -> _refreshingStates[tabIndex].value = true
+
             LoadType.SilentRefresh -> Unit
+
             LoadType.LoadMore -> _loadMoreStates[tabIndex].value = LoadMoreState.Loading
         }
 
@@ -355,42 +346,36 @@ class OrderListViewModel @AssistedInject constructor(
                 OrderPageRequest(
                     page = requestPage,
                     size = pageSize,
-                    status = getStatusFilter(tabIndex)
-                )
+                    status = getStatusFilter(tabIndex),
+                ),
             ).asResult(),
             onSuccess = { response ->
-                if (requestId == requestSequences[tabIndex]) {
+                if (pagingRequestTracker.isCurrent(requestToken)) {
                     handleSuccess(
-                        tabIndex = tabIndex,
-                        requestPage = requestPage,
+                        requestToken = requestToken,
                         loadType = loadType,
-                        requestId = requestId,
                         data = response.data,
                     )
                 }
             },
             onError = { _, _ ->
-                if (requestId == requestSequences[tabIndex]) {
+                if (pagingRequestTracker.isCurrent(requestToken)) {
                     handleError(
                         tabIndex = tabIndex,
                         loadType = loadType,
                         previousLoadMoreState = previousLoadMoreState,
                     )
                 }
-            }
+            },
         )
     }
 
     /**
      * 处理成功响应
      */
-    private fun handleSuccess(
-        tabIndex: Int,
-        requestPage: Int,
-        loadType: LoadType,
-        requestId: Long,
-        data: NetworkPageData<Order>?,
-    ) {
+    private fun handleSuccess(requestToken: OrderPageRequestToken, loadType: LoadType, data: NetworkPageData<Order>?) {
+        val tabIndex = requestToken.tabIndex
+        val requestPage = requestToken.page
         val newList = data?.list ?: emptyList()
         val pagination = data?.pagination
 
@@ -409,7 +394,7 @@ class OrderListViewModel @AssistedInject constructor(
         when (loadType) {
             LoadType.Initial, LoadType.Refresh, LoadType.SilentRefresh -> {
                 // 刷新或首次加载 - 重置列表
-                pageIndices[tabIndex] = requestPage
+                if (!pagingRequestTracker.commit(requestToken)) return
                 _listDataMap[tabIndex].value = newList
                 _refreshingStates[tabIndex].value = false
 
@@ -429,8 +414,7 @@ class OrderListViewModel @AssistedInject constructor(
                 stateUpdateJobs[tabIndex] = viewModelScope.launch {
                     _loadMoreStates[tabIndex].value = LoadMoreState.Success
                     delay(400)
-                    if (requestId == requestSequences[tabIndex]) {
-                        pageIndices[tabIndex] = requestPage
+                    if (pagingRequestTracker.commit(requestToken)) {
                         _listDataMap[tabIndex].value = _listDataMap[tabIndex].value + newList
                         _loadMoreStates[tabIndex].value =
                             if (hasNextPage) LoadMoreState.PullToLoad else LoadMoreState.NoMore
@@ -443,11 +427,7 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 处理错误响应
      */
-    private fun handleError(
-        tabIndex: Int,
-        loadType: LoadType,
-        previousLoadMoreState: LoadMoreState,
-    ) {
+    private fun handleError(tabIndex: Int, loadType: LoadType, previousLoadMoreState: LoadMoreState) {
         _refreshingStates[tabIndex].value = false
 
         when (loadType) {
@@ -474,7 +454,7 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun retryRequest(tabIndex: Int = _selectedTabIndex.value) {
-        if (tabIndex !in pageIndices.indices) return
+        if (!pagingRequestTracker.isValidTab(tabIndex)) return
 
         tabDataLoaded[tabIndex] = true
         startListRequest(
@@ -491,7 +471,7 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun onRefresh(tabIndex: Int = _selectedTabIndex.value) {
-        if (tabIndex !in pageIndices.indices) return
+        if (!pagingRequestTracker.isValidTab(tabIndex)) return
 
         tabDataLoaded[tabIndex] = true
         startListRequest(
@@ -508,7 +488,7 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun onLoadMore(tabIndex: Int = _selectedTabIndex.value) {
-        if (tabIndex !in pageIndices.indices) return
+        if (!pagingRequestTracker.isValidTab(tabIndex)) return
 
         // 只有在可加载更多和加载失败状态下才能触发加载
         if (requestJobs[tabIndex]?.isActive == true ||
@@ -521,7 +501,7 @@ class OrderListViewModel @AssistedInject constructor(
 
         startListRequest(
             tabIndex = tabIndex,
-            requestPage = pageIndices[tabIndex] + 1,
+            requestPage = pagingRequestTracker.nextPage(tabIndex),
             loadType = LoadType.LoadMore,
             cancelCurrent = false,
         )
@@ -532,16 +512,11 @@ class OrderListViewModel @AssistedInject constructor(
      *
      * @author Joker.X
      */
-    fun shouldTriggerLoadMore(
-        lastIndex: Int,
-        totalCount: Int,
-        tabIndex: Int = _selectedTabIndex.value
-    ): Boolean {
-        return lastIndex >= totalCount - 3 &&
-                _loadMoreStates[tabIndex].value != LoadMoreState.Loading &&
-                _loadMoreStates[tabIndex].value != LoadMoreState.NoMore &&
-                _listDataMap[tabIndex].value.isNotEmpty()
-    }
+    fun shouldTriggerLoadMore(lastIndex: Int, totalCount: Int, tabIndex: Int = _selectedTabIndex.value): Boolean =
+        lastIndex >= totalCount - 3 &&
+            _loadMoreStates[tabIndex].value != LoadMoreState.Loading &&
+            _loadMoreStates[tabIndex].value != LoadMoreState.NoMore &&
+            _listDataMap[tabIndex].value.isNotEmpty()
 
     /**
      * 更新选中的标签
@@ -584,16 +559,14 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 获取指定标签的状态过滤条件
      */
-    private fun getStatusFilter(tabIndex: Int): List<Int>? {
-        return when (OrderStatus.entries[tabIndex]) {
-            OrderStatus.ALL -> null
-            OrderStatus.UNPAID -> listOf(0)
-            OrderStatus.UNSHIPPED -> listOf(1)
-            OrderStatus.UNRECEIVED -> listOf(2)
-            OrderStatus.AFTER_SALE -> listOf(5, 6)
-            OrderStatus.UNEVALUATED -> listOf(3)
-            OrderStatus.COMPLETED -> listOf(4)
-        }
+    private fun getStatusFilter(tabIndex: Int): List<Int>? = when (OrderStatus.entries[tabIndex]) {
+        OrderStatus.ALL -> null
+        OrderStatus.UNPAID -> listOf(0)
+        OrderStatus.UNSHIPPED -> listOf(1)
+        OrderStatus.UNRECEIVED -> listOf(2)
+        OrderStatus.AFTER_SALE -> listOf(5, 6)
+        OrderStatus.UNEVALUATED -> listOf(3)
+        OrderStatus.COMPLETED -> listOf(4)
     }
 
     /**
@@ -602,7 +575,7 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun cancelOrder(orderId: Long) {
-        _currentCancelOrderId = orderId
+        currentCancelOrderId = orderId
         showCancelModal()
     }
 
@@ -631,8 +604,8 @@ class OrderListViewModel @AssistedInject constructor(
             scope = viewModelScope,
             flow = commonRepository.getDictData(
                 DictDataRequest(
-                    types = listOf("orderCancelReason")
-                )
+                    types = listOf("orderCancelReason"),
+                ),
             ).asResult(),
             showToast = false,
             onLoading = { _cancelReasonsModalUiState.value = BaseNetWorkUiState.Loading },
@@ -642,7 +615,7 @@ class OrderListViewModel @AssistedInject constructor(
             },
             onError = { _, _ ->
                 _cancelReasonsModalUiState.value = BaseNetWorkUiState.Error()
-            }
+            },
         )
     }
 
@@ -684,14 +657,14 @@ class OrderListViewModel @AssistedInject constructor(
             scope = viewModelScope,
             flow = orderRepository.cancelOrder(
                 CancelOrderRequest(
-                    orderId = _currentCancelOrderId,
-                    remark = _selectedCancelReason.value?.name ?: ""
-                )
+                    orderId = currentCancelOrderId,
+                    remark = _selectedCancelReason.value?.name ?: "",
+                ),
             ).asResult(),
             onData = { _ ->
                 // 取消订单会影响：全部(0)、待付款(1)、待发货(2)
                 refreshSpecificTabs(listOf(0, 1, 2))
-            }
+            },
         )
     }
 
@@ -701,7 +674,7 @@ class OrderListViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun showConfirmReceiveDialog(orderId: Long) {
-        _currentConfirmOrderId = orderId
+        currentConfirmOrderId = orderId
         _showConfirmDialog.value = true
     }
 
@@ -712,7 +685,7 @@ class OrderListViewModel @AssistedInject constructor(
      */
     fun hideConfirmReceiveDialog() {
         _showConfirmDialog.value = false
-        _currentConfirmOrderId = 0L
+        currentConfirmOrderId = 0L
     }
 
     /**
@@ -723,14 +696,14 @@ class OrderListViewModel @AssistedInject constructor(
     fun confirmReceiveOrder() {
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
-            flow = orderRepository.confirmReceive(_currentConfirmOrderId).asResult(),
+            flow = orderRepository.confirmReceive(currentConfirmOrderId).asResult(),
             onData = { _ ->
                 // 隐藏弹窗
                 hideConfirmReceiveDialog()
 
                 // 确认收货会影响：全部(0)、待收货(3)、待评价(5)
                 refreshSpecificTabs(listOf(0, 3, 5))
-            }
+            },
         )
     }
 
@@ -848,44 +821,42 @@ class OrderListViewModel @AssistedInject constructor(
      * 将Order中的goodsList转换为Cart类型的列表
      * 参考OrderConfirmViewModel中的处理方法
      */
-    private fun convertOrderGoodsToCart(order: Order): List<Cart> {
-        return order.goodsList?.let { goodsList ->
-            // 按商品ID分组
-            val groupedGoods = goodsList.groupBy { it.goodsId }
+    private fun convertOrderGoodsToCart(order: Order): List<Cart> = order.goodsList?.let { goodsList ->
+        // 按商品ID分组
+        val groupedGoods = goodsList.groupBy { it.goodsId }
 
-            // 为每个商品ID创建一个Cart对象
-            groupedGoods.map { (goodsId, items) ->
-                val firstItem = items.first()
+        // 为每个商品ID创建一个Cart对象
+        groupedGoods.map { (goodsId, items) ->
+            val firstItem = items.first()
 
-                Cart().apply {
-                    this.goodsId = goodsId
-                    this.goodsName = firstItem.goodsInfo?.title ?: ""
-                    this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
+            Cart().apply {
+                this.goodsId = goodsId
+                this.goodsName = firstItem.goodsInfo?.title ?: ""
+                this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
 
-                    // 收集该商品的所有规格
-                    val allSpecs = mutableListOf<CartGoodsSpec>()
+                // 收集该商品的所有规格
+                val allSpecs = mutableListOf<CartGoodsSpec>()
 
-                    // 遍历该商品的所有选中项
-                    items.forEach { orderGoods ->
-                        // 如果有规格信息，转换为CartGoodsSpec并添加
-                        orderGoods.spec?.let { spec ->
-                            val cartSpec = CartGoodsSpec(
-                                id = spec.id,
-                                goodsId = spec.goodsId,
-                                name = spec.name,
-                                price = spec.price,
-                                stock = spec.stock,
-                                count = orderGoods.count,
-                                images = spec.images
-                            )
-                            allSpecs.add(cartSpec)
-                        }
+                // 遍历该商品的所有选中项
+                items.forEach { orderGoods ->
+                    // 如果有规格信息，转换为CartGoodsSpec并添加
+                    orderGoods.spec?.let { spec ->
+                        val cartSpec = CartGoodsSpec(
+                            id = spec.id,
+                            goodsId = spec.goodsId,
+                            name = spec.name,
+                            price = spec.price,
+                            stock = spec.stock,
+                            count = orderGoods.count,
+                            images = spec.images,
+                        )
+                        allSpecs.add(cartSpec)
                     }
-
-                    // 设置规格列表
-                    this.spec = allSpecs
                 }
+
+                // 设置规格列表
+                this.spec = allSpecs
             }
-        } ?: emptyList()
-    }
+        }
+    } ?: emptyList()
 }

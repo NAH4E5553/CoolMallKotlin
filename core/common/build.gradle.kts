@@ -26,4 +26,7 @@ dependencies {
     implementation(projects.core.util)
     // QQ SDK 依赖
     implementation(files("libs/open_sdk_lite.jar"))
+
+    // 协程与 ViewModel 单元测试
+    testImplementation(libs.kotlinx.coroutines.test)
 }

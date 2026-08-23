@@ -7,12 +7,12 @@ import com.joker.coolmall.core.model.entity.Cart
 import com.joker.coolmall.core.model.entity.Goods
 import com.joker.coolmall.core.model.entity.GoodsSpec
 import com.joker.coolmall.core.model.entity.SelectedGoods
-import com.joker.coolmall.navigation.main.MainRoutes
-import com.joker.coolmall.navigation.navigate
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.util.storage.MMKVUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.feature.main.R
+import com.joker.coolmall.navigation.main.MainRoutes
+import com.joker.coolmall.navigation.navigate
+import com.joker.coolmall.navigation.order.OrderRoutes
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -67,7 +67,7 @@ class CartViewModel @AssistedInject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = emptyList(),
         )
 
     /**
@@ -77,66 +77,40 @@ class CartViewModel @AssistedInject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = true
+            initialValue = true,
         )
 
     /**
      * 是否全选状态
      */
     val isAllSelected: StateFlow<Boolean> = combine(cartItems, selectedItems) { carts, selected ->
-        if (carts.isEmpty()) return@combine false
-
-        // 统计所有规格的数量
-        val totalSpecCount = carts.sumOf { it.spec.size }
-
-        // 统计已选择的规格数量
-        val selectedSpecCount = selected.entries.sumOf { (goodsId, specIds) ->
-            specIds.size
-        }
-
-        // 全选状态：所有规格都被选中
-        totalSpecCount > 0 && totalSpecCount == selectedSpecCount
+        areAllCartItemsSelected(carts, selected)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = false
+        initialValue = false,
     )
 
     /**
      * 已选中的商品数量
      */
     val selectedCount: StateFlow<Int> = selectedItems.map { selected ->
-        selected.values.sumOf { it.size }
+        selectedCartItemCount(selected)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = 0
+        initialValue = 0,
     )
 
     /**
      * 已选中商品的总价
      */
     val selectedTotalAmount: StateFlow<Int> = combine(cartItems, selectedItems) { carts, selected ->
-        var total = 0
-
-        carts.forEach { cart ->
-            val goodsId = cart.goodsId
-            // 获取该商品下选中的规格ID集合
-            val selectedSpecIds = selected[goodsId]?.toMutableSet() ?: mutableSetOf()
-
-            // 计算该商品下选中规格的总价
-            cart.spec.forEach { spec ->
-                if (selectedSpecIds.contains(spec.id)) {
-                    total += spec.price * spec.count
-                }
-            }
-        }
-
-        total
+        selectedCartTotalAmount(carts, selected)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = 0
+        initialValue = 0,
     )
 
     init {
@@ -168,16 +142,7 @@ class CartViewModel @AssistedInject constructor(
             _selectedItems.value = emptyMap()
         } else {
             // 当前非全选状态，设置全选
-            val newSelectedMap = mutableMapOf<Long, Set<Long>>()
-
-            cartItems.value.forEach { cart ->
-                val specIds = cart.spec.map { it.id }.toSet()
-                if (specIds.isNotEmpty()) {
-                    newSelectedMap[cart.goodsId] = specIds
-                }
-            }
-
-            _selectedItems.value = newSelectedMap
+            _selectedItems.value = selectAllCartItems(cartItems.value)
         }
     }
 
@@ -190,28 +155,7 @@ class CartViewModel @AssistedInject constructor(
      */
     fun toggleItemSelection(goodsId: Long, specId: Long) {
         _selectedItems.update { currentSelected ->
-            val mutableMap = currentSelected.toMutableMap()
-
-            // 获取该商品当前已选中的规格集合
-            val currentSpecIds = currentSelected[goodsId]?.toMutableSet() ?: mutableSetOf()
-
-            if (currentSpecIds.contains(specId)) {
-                // 如果规格已选中，则取消选中
-                currentSpecIds.remove(specId)
-
-                // 如果该商品下没有选中的规格了，则从map中移除该商品
-                if (currentSpecIds.isEmpty()) {
-                    mutableMap.remove(goodsId)
-                } else {
-                    mutableMap[goodsId] = currentSpecIds
-                }
-            } else {
-                // 如果规格未选中，则添加选中
-                currentSpecIds.add(specId)
-                mutableMap[goodsId] = currentSpecIds
-            }
-
-            mutableMap.toMap()
+            toggleCartItemSelection(currentSelected, goodsId, specId)
         }
     }
 
@@ -347,12 +291,12 @@ class CartViewModel @AssistedInject constructor(
                         name = cartSpec.name,
                         price = cartSpec.price,
                         stock = cartSpec.stock,
-                        images = cartSpec.images
+                        images = cartSpec.images,
                     )
                     goodsInfo = Goods(
                         id = cart.goodsId,
                         title = cart.goodsName,
-                        mainPic = cart.goodsMainPic
+                        mainPic = cart.goodsMainPic,
                     )
                 }
 
@@ -379,5 +323,4 @@ class CartViewModel @AssistedInject constructor(
          */
         fun create(navKey: MainRoutes.Cart): CartViewModel
     }
-
 }

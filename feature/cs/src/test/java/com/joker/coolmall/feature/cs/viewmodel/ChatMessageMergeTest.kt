@@ -38,6 +38,33 @@ class ChatMessageMergeTest {
         assertEquals(listOf(10L, 9L, 8L, 7L), result.map(CsMsg::id))
     }
 
+    @Test
+    fun `first page keeps live version when response contains same id`() {
+        val liveMessage = CsMsg(id = 12, nickName = "live")
+        val responseMessage = CsMsg(id = 12, nickName = "response")
+
+        val result = mergeFirstPageMessages(
+            currentMessages = listOf(liveMessage),
+            messageIdsAtRequestStart = emptySet(),
+            pageMessages = listOf(responseMessage, CsMsg(id = 11)),
+        )
+
+        assertEquals(listOf(12L, 11L), result.map(CsMsg::id))
+        assertEquals("live", result.first().nickName)
+    }
+
+    @Test
+    fun `empty older page keeps current messages unchanged`() {
+        val currentMessages = messages(10, 9)
+
+        val result = appendOlderMessages(
+            currentMessages = currentMessages,
+            pageMessages = emptyList(),
+        )
+
+        assertEquals(currentMessages, result)
+    }
+
     private fun messages(vararg ids: Long): List<CsMsg> = ids.map { id ->
         CsMsg(id = id)
     }

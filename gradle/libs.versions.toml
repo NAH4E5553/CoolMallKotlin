@@ -46,6 +46,8 @@ junit = "4.13.2"
 junitVersion = "1.3.0"
 # AndroidX Espresso 测试框架: https://developer.android.com/training/testing/espresso
 espressoCore = "3.7.0"
+# Kotlin Coroutines Test: https://github.com/Kotlin/kotlinx.coroutines
+kotlinxCoroutines = "1.10.2"
 
 # Jetpack Compose 相关版本
 # Compose BOM: https://developer.android.com/jetpack/compose/bom
@@ -153,6 +155,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 # Jetpack Compose 相关库
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
