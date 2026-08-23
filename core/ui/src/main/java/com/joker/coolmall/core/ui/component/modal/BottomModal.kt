@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
  * @param onDismiss 关闭回调
  * @param sheetState 底部弹出层状态
  * @param showDragIndicator 是否显示顶部拖动指示器
+ * @param sheetGesturesEnabled 是否允许通过手势拖动弹出层
  * @param horizontalPadding 水平内边距
  * @param containerColor 容器背景色
  * @param shape 容器形状
@@ -60,6 +61,7 @@ fun BottomModal(
     onDismiss: () -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(),
     showDragIndicator: Boolean = true,
+    sheetGesturesEnabled: Boolean = true,
     horizontalPadding: Dp = SpacePaddingLarge,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     shape: Shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
@@ -83,6 +85,7 @@ fun BottomModal(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
+            sheetGesturesEnabled = sheetGesturesEnabled,
             containerColor = containerColor,
             shape = shape,
             // 关闭系统默认的拖动指示器
@@ -131,4 +134,4 @@ fun BottomModal(
             }
         }
     }
-} 
+}
