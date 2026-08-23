@@ -5,7 +5,6 @@ import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.NavigationResultKey
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
 import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
@@ -25,7 +24,7 @@ import kotlinx.coroutines.launch
  * @param T 数据类型
  * @author Joker.X
  */
-abstract class BaseNetWorkViewModel<T> : BaseViewModel() {
+abstract class BaseNetWorkViewModel<T : Any> : BaseViewModel() {
     /**
      * 刷新结果监听任务
      *
@@ -34,11 +33,20 @@ abstract class BaseNetWorkViewModel<T> : BaseViewModel() {
      */
     private var refreshObserveJob: Job? = null
 
+    /** 当前请求；重复执行时取消旧请求，避免旧结果覆盖新状态。 */
+    private var requestJob: Job? = null
+
+    /** 最少加载时长产生的延迟状态任务。 */
+    private var stateUpdateJob: Job? = null
+
+    /** 请求序号，用于阻止已被替换的请求提交状态。 */
+    private var requestSequence = 0L
+
     /**
      * 通用网络请求UI状态
      * 初始为加载中状态
      */
-    val _uiState: MutableStateFlow<BaseNetWorkUiState<T>> =
+    protected val _uiState: MutableStateFlow<BaseNetWorkUiState<T>> =
         MutableStateFlow(BaseNetWorkUiState.Loading)
     val uiState: StateFlow<BaseNetWorkUiState<T>> = _uiState.asStateFlow()
 
@@ -70,16 +78,26 @@ abstract class BaseNetWorkViewModel<T> : BaseViewModel() {
      * 使用ResultHandler自动处理状态管理和错误处理
      */
     fun executeRequest() {
+        requestJob?.cancel()
+        stateUpdateJob?.cancel()
+        val requestId = ++requestSequence
+
         // 记录请求开始时间
         if (enableMinLoadingTime) requestStartTime = System.currentTimeMillis()
 
-        ResultHandler.handleResultWithData(
+        requestJob = ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = requestApiFlow().asResult(),
             showToast = showErrorToast,
-            onLoading = { onRequestStart() },
-            onData = { data -> onRequestSuccess(data) },
-            onError = { message, exception -> onRequestError(message, exception) }
+            onLoading = {
+                if (requestId == requestSequence) onRequestStart()
+            },
+            onData = { data ->
+                if (requestId == requestSequence) onRequestSuccess(data)
+            },
+            onError = { message, exception ->
+                if (requestId == requestSequence) onRequestError(message, exception)
+            }
         )
     }
 
@@ -101,9 +119,10 @@ abstract class BaseNetWorkViewModel<T> : BaseViewModel() {
 
             if (elapsedTime < minLoadingTime) {
                 // 延迟设置成功状态
-                viewModelScope.launch {
+                val requestId = requestSequence
+                stateUpdateJob = viewModelScope.launch {
                     delay(minLoadingTime - elapsedTime)
-                    setSuccessState(data)
+                    if (requestId == requestSequence) setSuccessState(data)
                 }
             } else {
                 setSuccessState(data)
@@ -172,10 +191,10 @@ abstract class BaseNetWorkViewModel<T> : BaseViewModel() {
      * 推荐在 ViewModel 的 `init` 中调用一次，不依赖 View 层 `LaunchedEffect`。
      * 内部已做去重：重复调用不会重复注册。
      *
-     * @param key 刷新结果的类型安全 Key，默认使用全局的 [RefreshResultKey]
+     * @param key 当前业务域的类型安全刷新 Key
      */
     fun observeRefreshState(
-        key: NavigationResultKey<RefreshResult> = RefreshResultKey,
+        key: NavigationResultKey<RefreshResult>,
     ) {
         if (refreshObserveJob != null) return
         refreshObserveJob = viewModelScope.launch {

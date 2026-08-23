@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.SpaceHorizontalMedium
@@ -119,7 +120,8 @@ private fun RefreshListContent(
     content: LazyListScope.() -> Unit
 ) {
     val actualListState = listState ?: rememberLazyListState()
-    val shouldLoadMore by remember {
+    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
+    val shouldLoadMore by remember(actualListState, shouldTriggerLoadMore) {
         derivedStateOf {
             val lastVisibleItem = actualListState.layoutInfo.visibleItemsInfo.lastOrNull()
             if (lastVisibleItem != null) {
@@ -133,7 +135,7 @@ private fun RefreshListContent(
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
-            onLoadMore()
+            currentOnLoadMore()
         }
     }
 
@@ -150,8 +152,7 @@ private fun RefreshListContent(
             LoadMore(
                 modifier = Modifier.padding(horizontal = SpaceHorizontalXXLarge),
                 state = loadMoreState,
-                listState = if (loadMoreState == LoadMoreState.Loading) actualListState else null,
-                onRetry = onLoadMore
+                onRetry = currentOnLoadMore
             )
         }
     }
@@ -176,7 +177,8 @@ private fun RefreshGridContent(
     content: LazyStaggeredGridScope.() -> Unit
 ) {
     val actualGridState = gridState ?: rememberLazyStaggeredGridState()
-    val shouldLoadMore by remember {
+    val currentOnLoadMore by rememberUpdatedState(onLoadMore)
+    val shouldLoadMore by remember(actualGridState, shouldTriggerLoadMore) {
         derivedStateOf {
             val lastVisibleItem = actualGridState.layoutInfo.visibleItemsInfo.lastOrNull()
             if (lastVisibleItem != null) {
@@ -190,7 +192,7 @@ private fun RefreshGridContent(
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
-            onLoadMore()
+            currentOnLoadMore()
         }
     }
 
@@ -207,8 +209,7 @@ private fun RefreshGridContent(
             LoadMore(
                 modifier = Modifier.padding(horizontal = SpaceHorizontalXXLarge),
                 state = loadMoreState,
-                listState = null,
-                onRetry = onLoadMore
+                onRetry = currentOnLoadMore
             )
         }
     }

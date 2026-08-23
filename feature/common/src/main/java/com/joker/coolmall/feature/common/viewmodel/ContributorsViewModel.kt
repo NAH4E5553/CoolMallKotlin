@@ -30,11 +30,14 @@ class ContributorsViewModel @Inject constructor(
      * @return 用户贡献者分页数据的Flow
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<UserContributor>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<UserContributor>>> {
         return userContributorRepository.getUserContributorPage(
             PageRequest(
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }

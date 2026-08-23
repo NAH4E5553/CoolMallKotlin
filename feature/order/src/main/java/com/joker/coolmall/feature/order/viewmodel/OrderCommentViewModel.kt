@@ -8,7 +8,7 @@ import com.joker.coolmall.core.data.repository.GoodsRepository
 import com.joker.coolmall.core.model.entity.Comment
 import com.joker.coolmall.core.model.request.GoodsCommentSubmitRequest
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
 import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.core.util.log.LogUtils
@@ -115,8 +115,7 @@ class OrderCommentViewModel @AssistedInject constructor(
                 if (result.isSucceeded && result.data != null) {
                     _uploadedImageUrls.value = result.data ?: emptyList()
 
-                    // 打印上传成功的图片URL列表
-                    LogUtils.d("图片上传成功！上传的图片URL列表: ${result.data}")
+                    LogUtils.d("图片上传成功，共 ${result.data?.size ?: 0} 张")
                     LogUtils.d("共上传 ${result.data?.size ?: 0} 张图片")
 
                     // 图片上传成功后自动提交评价
@@ -179,7 +178,7 @@ class OrderCommentViewModel @AssistedInject constructor(
                 ToastUtils.showSuccess(R.string.comment_submit_success)
                 LogUtils.d("评价提交成功")
                 // 使用 NavigationResult 回传刷新信号，通知上一个页面刷新
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(OrderChangedResultKey, RefreshResult(refresh = true))
             },
             onFinally = { _isSubmitting.value = false })
     }

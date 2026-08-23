@@ -167,7 +167,10 @@ class GoodsCategoryViewModel @AssistedInject constructor(
      * @return 商品分页数据的网络响应Flow
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Goods>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Goods>>> {
         val (order, sort) = when (_currentSortType.value) {
             SortType.COMPREHENSIVE -> null to null
             SortType.SALES -> {
@@ -189,8 +192,8 @@ class GoodsCategoryViewModel @AssistedInject constructor(
 
         return goodsRepository.getGoodsPage(
             GoodsSearchRequest(
-                page = super.currentPage,
-                size = super.pageSize,
+                page = page,
+                size = pageSize,
                 featured = isFeatured,
                 recommend = isRecommend,
                 typeId = _selectedCategoryIds.value.takeIf { it.isNotEmpty() },

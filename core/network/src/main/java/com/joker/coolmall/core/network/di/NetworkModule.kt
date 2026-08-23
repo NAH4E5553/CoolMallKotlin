@@ -71,7 +71,11 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .apply {
                 if (BuildConfig.DEBUG) {
-                    addInterceptor(ChuckerInterceptor.Builder(context).build())
+                    addInterceptor(
+                        ChuckerInterceptor.Builder(context)
+                            .redactHeaders("Authorization")
+                            .build()
+                    )
                 }
             }
             // 请求失败重试
@@ -111,6 +115,7 @@ object NetworkModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
+            redactHeader("Authorization")
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
@@ -122,29 +127,18 @@ object NetworkModule {
     /**
      * 提供文件上传专用的OkHttpClient
      *
-     * @param context 应用上下文
      * @return 文件上传专用OkHttpClient实例
      * @author Joker.X
      */
     @Provides
     @Singleton
     @FileUploadQualifier
-    fun provideFileUploadOkHttpClient(
-        @ApplicationContext context: Context
-    ): OkHttpClient {
+    fun provideFileUploadOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .apply {
-                if (BuildConfig.DEBUG) {
-                    addInterceptor(ChuckerInterceptor.Builder(context).build())
-                    addInterceptor(HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.BODY
-                    })
-                }
-            }
             .build()
     }
 }

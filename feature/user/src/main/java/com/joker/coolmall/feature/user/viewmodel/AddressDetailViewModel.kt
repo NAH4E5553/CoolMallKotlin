@@ -6,8 +6,8 @@ import com.joker.coolmall.core.data.repository.AddressRepository
 import com.joker.coolmall.core.model.entity.Address
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
 import com.joker.coolmall.navigation.popBackStackWithResult
+import com.joker.coolmall.core.navigation.user.AddressChangedResultKey
 import com.joker.coolmall.core.navigation.user.UserRoutes
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
@@ -203,12 +203,12 @@ class AddressDetailViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     private fun updateAddress(address: Address) {
-        ResultHandler.handleResult(
+        ResultHandler.handleResultWithoutData(
             scope = viewModelScope,
             flow = addressRepository.updateAddress(address).asResult(),
-            onSuccess = { _ ->
+            onSuccess = {
                 // 使用 NavigationResult 回传刷新信号，通知地址列表页面刷新
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(AddressChangedResultKey, RefreshResult(refresh = true))
             }
         )
     }
@@ -225,7 +225,7 @@ class AddressDetailViewModel @AssistedInject constructor(
             flow = addressRepository.addAddress(address).asResult(),
             onSuccess = { _ ->
                 // 使用 NavigationResult 回传刷新信号，通知地址列表页面刷新
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(AddressChangedResultKey, RefreshResult(refresh = true))
             }
         )
     }

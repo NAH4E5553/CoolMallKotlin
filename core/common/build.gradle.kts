@@ -22,6 +22,8 @@ dependencies {
     implementation(projects.core.data)
     // 引入 result 模块
     implementation(projects.core.result)
+    // 引入工具模块（common 直接使用 MMKVUtils）
+    implementation(projects.core.util)
     // QQ SDK 依赖
     implementation(files("libs/open_sdk_lite.jar"))
 }

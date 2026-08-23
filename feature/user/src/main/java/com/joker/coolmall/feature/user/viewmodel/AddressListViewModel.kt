@@ -10,6 +10,7 @@ import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.core.navigation.user.SelectAddressResultKey
+import com.joker.coolmall.core.navigation.user.AddressChangedResultKey
 import com.joker.coolmall.core.navigation.user.UserNavigator
 import com.joker.coolmall.core.navigation.user.UserRoutes
 import com.joker.coolmall.result.ResultHandler
@@ -59,7 +60,7 @@ class AddressListViewModel @AssistedInject constructor(
     val deleteId: StateFlow<Long?> = _deleteId.asStateFlow()
 
     init {
-        observeRefreshState()
+        observeRefreshState(AddressChangedResultKey)
         initLoad()
     }
 
@@ -69,11 +70,14 @@ class AddressListViewModel @AssistedInject constructor(
      * @return 网络响应的Flow
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Address>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Address>>> {
         return addressRepository.getAddressPage(
             PageRequest(
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }
@@ -106,10 +110,10 @@ class AddressListViewModel @AssistedInject constructor(
      */
     fun deleteAddress() {
         val id = _deleteId.value ?: return
-        ResultHandler.handleResultWithData(
+        ResultHandler.handleResultWithoutData(
             scope = viewModelScope,
             flow = addressRepository.deleteAddress(Ids(listOf(id))).asResult(),
-            onData = {
+            onSuccess = {
                 onRefresh()
                 hideDeleteDialog()
             }

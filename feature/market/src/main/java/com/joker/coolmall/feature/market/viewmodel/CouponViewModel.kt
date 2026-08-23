@@ -33,11 +33,14 @@ class CouponViewModel @Inject constructor(
      * @return 优惠券分页数据流
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Coupon>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Coupon>>> {
         return couponRepository.getUserCouponPage(
             PageRequest(
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }

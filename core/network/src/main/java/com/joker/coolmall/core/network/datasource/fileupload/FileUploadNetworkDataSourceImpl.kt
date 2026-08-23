@@ -6,6 +6,7 @@ import com.joker.coolmall.core.model.entity.OssUpload
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.core.network.datasource.common.CommonNetworkDataSource
 import com.joker.coolmall.core.network.service.FileUploadService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -75,10 +76,7 @@ class FileUploadNetworkDataSourceImpl @Inject constructor(
 
                         emit(uploadResult)
 
-                        // 打印上传成功的URL
-                        if (uploadResult.code == 1000 && uploadResult.data != null) {
-                            Log.d(TAG, "单个图片上传成功，URL: ${uploadResult.data}")
-                        }
+                        if (uploadResult.code == 1000) Log.d(TAG, "单个图片上传成功")
                     } else {
                         Log.e(TAG, "上传凭证无效")
                         emit(NetworkResponse(data = null, code = 400, message = "上传凭证无效"))
@@ -93,13 +91,15 @@ class FileUploadNetworkDataSourceImpl @Inject constructor(
                         )
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "上传过程中发生错误", e)
+                Log.e(TAG, "上传过程中发生错误")
                 emit(
                     NetworkResponse(
                         data = null,
                         code = 500,
-                        message = "上传过程中发生错误: ${e.message}"
+                        message = "上传过程中发生错误"
                     )
                 )
             }
@@ -139,10 +139,7 @@ class FileUploadNetworkDataSourceImpl @Inject constructor(
 
                         emit(uploadResult)
 
-                        // 打印上传成功的URL列表
-                        if (uploadResult.code == 1000 && uploadResult.data != null) {
-                            Log.d(TAG, "批量图片上传成功，URL列表: ${uploadResult.data}")
-                        }
+                        if (uploadResult.code == 1000) Log.d(TAG, "批量图片上传成功")
                     } else {
                         Log.e(TAG, "上传凭证无效")
                         emit(NetworkResponse(data = null, code = 400, message = "上传凭证无效"))
@@ -157,13 +154,15 @@ class FileUploadNetworkDataSourceImpl @Inject constructor(
                         )
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "批量上传过程中发生错误", e)
+                Log.e(TAG, "批量上传过程中发生错误")
                 emit(
                     NetworkResponse(
                         data = null,
                         code = 500,
-                        message = "批量上传过程中发生错误: ${e.message}"
+                        message = "批量上传过程中发生错误"
                     )
                 )
             }

@@ -12,13 +12,17 @@ import android.util.Log
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.core.network.di.FileUploadQualifier
 import com.joker.coolmall.core.network.service.FileUploadService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody
+import okio.BufferedSink
+import okio.source
 import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
@@ -44,12 +48,11 @@ class FileUploadServiceImpl @Inject constructor(
         try {
             val fileName = generateFileName(imageUri)
 
-            // 从URI读取文件内容
-            val inputStream = context.contentResolver.openInputStream(imageUri)
-            val fileBytes = inputStream?.readBytes()
-            inputStream?.close()
-
-            if (fileBytes == null) {
+            val canReadFile = context.contentResolver
+                .openAssetFileDescriptor(imageUri, "r")
+                ?.use { true }
+                ?: false
+            if (!canReadFile) {
                 return@withContext NetworkResponse(
                     data = null,
                     code = 400,
@@ -59,7 +62,7 @@ class FileUploadServiceImpl @Inject constructor(
 
             // 获取文件的MIME类型
             val mimeType = context.contentResolver.getType(imageUri) ?: "image/jpeg"
-            val fileRequestBody = fileBytes.toRequestBody(mimeType.toMediaType())
+            val fileRequestBody = createStreamingRequestBody(imageUri, mimeType.toMediaType())
 
             // 构建multipart请求体
             val requestBody = MultipartBody.Builder()
@@ -76,29 +79,29 @@ class FileUploadServiceImpl @Inject constructor(
                 .post(requestBody)
                 .build()
 
-            val response = okHttpClient.newCall(request).execute()
-
-            if (response.isSuccessful) {
-                // 根据腾讯云COS规则生成文件访问URL
-                // 格式: https://bucket-appid.cos.region.myqcloud.com/key
-                val fileKey = "app/base/$fileName"
-                val fileUrl = "$uploadUrl/$fileKey"
-                Log.d(TAG, "文件上传成功，URL: $fileUrl")
-                NetworkResponse(data = fileUrl, code = 1000, message = "上传成功")
-            } else {
-                Log.e(TAG, "文件上传失败，响应码: ${response.code}")
-                NetworkResponse(
-                    data = null,
-                    code = response.code,
-                    message = "上传失败: ${response.message}"
-                )
+            okHttpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val fileKey = "app/base/$fileName"
+                    val fileUrl = "$uploadUrl/$fileKey"
+                    Log.d(TAG, "文件上传成功")
+                    NetworkResponse(data = fileUrl, code = 1000, message = "上传成功")
+                } else {
+                    Log.e(TAG, "文件上传失败，响应码: ${response.code}")
+                    NetworkResponse(
+                        data = null,
+                        code = response.code,
+                        message = "上传失败"
+                    )
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
-            Log.e(TAG, "文件上传异常", e)
-            NetworkResponse(data = null, code = 500, message = "上传异常: ${e.message}")
+            Log.e(TAG, "文件上传发生网络或文件读取异常")
+            NetworkResponse(data = null, code = 500, message = "上传异常")
         } catch (e: Exception) {
-            Log.e(TAG, "文件上传未知错误", e)
-            NetworkResponse(data = null, code = 500, message = "上传错误: ${e.message}")
+            Log.e(TAG, "文件上传发生未知错误")
+            NetworkResponse(data = null, code = 500, message = "上传错误")
         }
     }
 
@@ -135,9 +138,31 @@ class FileUploadServiceImpl @Inject constructor(
 
             Log.d(TAG, "批量上传成功，共上传 ${uploadedUrls.size} 个文件")
             NetworkResponse(data = uploadedUrls.toList(), code = 1000, message = "批量上传成功")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Log.e(TAG, "批量上传异常", e)
-            NetworkResponse(data = null, code = 500, message = "批量上传异常: ${e.message}")
+            Log.e(TAG, "批量上传异常")
+            NetworkResponse(data = null, code = 500, message = "批量上传异常")
+        }
+    }
+
+    /** 创建按需读取 Content Uri 的请求体，避免把整个文件加载到内存。 */
+    private fun createStreamingRequestBody(uri: Uri, mediaType: MediaType): RequestBody {
+        return object : RequestBody() {
+            override fun contentType(): MediaType = mediaType
+
+            override fun contentLength(): Long =
+                context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
+                    descriptor.length
+                } ?: -1L
+
+            override fun writeTo(sink: BufferedSink) {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                    ?: throw IOException("Unable to open upload content")
+                inputStream.use { stream ->
+                    sink.writeAll(stream.source())
+                }
+            }
         }
     }
 

@@ -40,12 +40,15 @@ class GoodsCommentViewModel @AssistedInject constructor(
      *
      * @return 商品评论分页数据的Flow
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Comment>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Comment>>> {
         return goodsRepository.getGoodsCommentPage(
             GoodsCommentPageRequest(
                 goodsId = goodsId.toString(),
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }
