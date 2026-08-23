@@ -23,6 +23,7 @@ import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,8 @@ class HomeViewModel @Inject constructor(
     private val goodsRepository: GoodsRepository,
     private val couponRepository: CouponRepository
 ) : BaseNetWorkListViewModel<Goods>() {
+
+    private var homeRequestJob: Job? = null
 
     /**
      * 页面数据
@@ -67,11 +70,14 @@ class HomeViewModel @Inject constructor(
      * @return 商品分页数据流
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Goods>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Goods>>> {
         return goodsRepository.getGoodsPage(
             GoodsSearchRequest(
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }
@@ -82,11 +88,17 @@ class HomeViewModel @Inject constructor(
      * @author Joker.X
      */
     fun loadHomeData() {
-        ResultHandler.handleResult(
+        homeRequestJob?.cancel()
+        cancelListRequest()
+        resetPaging()
+        _loadMoreState.value = LoadMoreState.Loading
+
+        homeRequestJob = ResultHandler.handleResult(
             showToast = false,
             scope = viewModelScope,
             flow = pageRepository.getHomeData().asResult(),
             onSuccess = { response ->
+                resetPaging()
                 _pageData.value = response.data ?: Home()
                 _isRefreshing.value = false
 
@@ -103,7 +115,11 @@ class HomeViewModel @Inject constructor(
 
             },
             onError = { _, _ ->
-                super._uiState.value = BaseNetWorkListUiState.Error
+                _isRefreshing.value = false
+                _loadMoreState.value = LoadMoreState.PullToLoad
+                if (_listData.value.isEmpty()) {
+                    super._uiState.value = BaseNetWorkListUiState.Error
+                }
             }
         )
     }
@@ -114,13 +130,7 @@ class HomeViewModel @Inject constructor(
      * @author Joker.X
      */
     override fun onRefresh() {
-        // 如果正在加载中，则不重复请求
-        if (_loadMoreState.value == LoadMoreState.Loading) {
-            return
-        }
-
         _isRefreshing.value = true
-        currentPage = 1
         loadHomeData()
     }
 

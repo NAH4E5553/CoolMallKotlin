@@ -15,7 +15,7 @@ interface AuthStoreDataSource {
      * @param auth 认证信息对象
      * @author Joker.X
      */
-    suspend fun saveAuth(auth: Auth)
+    fun saveAuth(auth: Auth)
 
     /**
      * 获取认证信息
@@ -23,7 +23,7 @@ interface AuthStoreDataSource {
      * @return 认证信息对象，如不存在则返回null
      * @author Joker.X
      */
-    suspend fun getAuth(): Auth?
+    fun getAuth(): Auth?
 
     /**
      * 获取用户 token
@@ -31,14 +31,14 @@ interface AuthStoreDataSource {
      * @return token字符串，如不存在则返回null
      * @author Joker.X
      */
-    suspend fun getToken(): String?
+    fun getToken(): String?
 
     /**
      * 清除认证信息
      *
      * @author Joker.X
      */
-    suspend fun clearAuth()
+    fun clearAuth()
 
     /**
      * 检查是否已登录（有认证信息且未过期）
@@ -46,5 +46,5 @@ interface AuthStoreDataSource {
      * @return 是否已登录
      * @author Joker.X
      */
-    suspend fun isLoggedIn(): Boolean
-} 
+    fun isLoggedIn(): Boolean
+}

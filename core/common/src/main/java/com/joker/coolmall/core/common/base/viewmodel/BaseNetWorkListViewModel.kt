@@ -7,7 +7,6 @@ import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.NavigationResultKey
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
 import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
@@ -29,6 +28,12 @@ import kotlinx.coroutines.launch
  * @author Joker.X
  */
 abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
+    private enum class LoadType {
+        Initial,
+        Refresh,
+        LoadMore,
+    }
+
     /**
      * 刷新结果监听任务
      *
@@ -36,6 +41,15 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
      * 当该任务不为 null 时，表示当前 ViewModel 已经建立监听。
      */
     private var refreshObserveJob: Job? = null
+
+    /** 当前分页请求，刷新或重试时用于取消旧请求。 */
+    private var requestJob: Job? = null
+
+    /** 最少加载时间对应的延迟状态任务。 */
+    private var stateUpdateJob: Job? = null
+
+    /** 请求序号，用于阻止旧请求提交延迟状态。 */
+    private var requestSequence = 0L
 
     /**
      * 当前页码
@@ -50,7 +64,8 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
     /**
      * 网络请求UI状态
      */
-    val _uiState = MutableStateFlow<BaseNetWorkListUiState>(BaseNetWorkListUiState.Loading)
+    protected val _uiState =
+        MutableStateFlow<BaseNetWorkListUiState>(BaseNetWorkListUiState.Loading)
     val uiState: StateFlow<BaseNetWorkListUiState> = _uiState.asStateFlow()
 
     /**
@@ -68,7 +83,7 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
     /**
      * 下拉刷新状态 (仅用于PullToRefresh组件)
      */
-    val _isRefreshing = MutableStateFlow(false)
+    protected val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     /**
@@ -80,48 +95,73 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
     /**
      * 请求开始时间，用于计算最少加载时间（仅首次加载）
      */
-    private var requestStartTime: Long = 0
-
-    /**
-     * 子类必须实现此方法，提供分页API请求的Flow
-     *
-     * @return 返回包含分页数据的Flow
-     */
-    protected abstract fun requestListData(): Flow<NetworkResponse<NetworkPageData<T>>>
+    /** 子类使用本次请求的页码快照构造请求，不能再次读取共享页码。 */
+    protected abstract fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<T>>>
 
     /**
      * 初始化函数，在子类init块中调用
      */
     protected fun initLoad() {
-        loadListData()
+        startRequest(page = 1, loadType = LoadType.Initial, cancelCurrent = true)
     }
 
-    /**
-     * 加载列表数据
-     */
-    protected fun loadListData() {
+    /** 取消分页请求，供首页等组合接口刷新时停止加载更多。 */
+    protected fun cancelListRequest() {
+        requestSequence++
+        requestJob?.cancel()
+        requestJob = null
+        stateUpdateJob?.cancel()
+        stateUpdateJob = null
+    }
 
-        val isFirstLoading = _loadMoreState.value == LoadMoreState.Loading && currentPage == 1
+    /** 重置组合页面维护的分页游标。 */
+    protected fun resetPaging() {
+        currentPage = 1
+    }
 
-        // 记录请求开始时间（仅首次加载）并且启用最少加载时间功能
-        if (isFirstLoading && enableMinLoadingTime) {
-            requestStartTime = System.currentTimeMillis()
+    /** 发起一次携带不可变页码快照的分页请求。 */
+    private fun startRequest(
+        page: Int,
+        loadType: LoadType,
+        cancelCurrent: Boolean,
+    ) {
+        if (cancelCurrent) cancelListRequest()
+
+        val requestId = ++requestSequence
+        val requestStartTime = System.currentTimeMillis()
+
+        when (loadType) {
+            LoadType.Initial -> {
+                _uiState.value = BaseNetWorkListUiState.Loading
+                _loadMoreState.value = LoadMoreState.Loading
+            }
+
+            LoadType.Refresh -> _isRefreshing.value = true
+            LoadType.LoadMore -> _loadMoreState.value = LoadMoreState.Loading
         }
 
-        // 设置UI状态 - 仅首次加载显示加载中状态
-        if (isFirstLoading) {
-            _uiState.value = BaseNetWorkListUiState.Loading
-        }
-
-        ResultHandler.handleResult(
+        requestJob = ResultHandler.handleResult(
             showToast = false,
             scope = viewModelScope,
-            flow = requestListData().asResult(),
+            flow = requestListData(page = page, pageSize = pageSize).asResult(),
             onSuccess = { response ->
-                handleSuccess(response.data)
+                if (requestId == requestSequence) {
+                    handleSuccess(
+                        data = response.data,
+                        requestPage = page,
+                        loadType = loadType,
+                        requestId = requestId,
+                        requestStartTime = requestStartTime,
+                    )
+                }
             },
             onError = { message, exception ->
-                handleError(message, exception)
+                if (requestId == requestSequence) {
+                    handleError(message, exception, loadType)
+                }
             }
         )
     }
@@ -129,7 +169,13 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
     /**
      * 处理成功响应
      */
-    protected open fun handleSuccess(data: NetworkPageData<T>?) {
+    private fun handleSuccess(
+        data: NetworkPageData<T>?,
+        requestPage: Int,
+        loadType: LoadType,
+        requestId: Long,
+        requestStartTime: Long,
+    ) {
         val newList = data?.list ?: emptyList()
         val pagination = data?.pagination
 
@@ -137,7 +183,7 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
         val hasNextPage = if (pagination != null) {
             val total = pagination.total ?: 0
             val size = pagination.size ?: pageSize
-            val currentPageNum = pagination.page ?: currentPage
+            val currentPageNum = pagination.page ?: requestPage
 
             // 当前页的数据量 * 当前页码 < 总数据量，说明还有下一页
             size * currentPageNum < total
@@ -145,8 +191,10 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
             false
         }
 
-        when {
-            currentPage == 1 -> {
+        currentPage = requestPage
+
+        when (loadType) {
+            LoadType.Initial, LoadType.Refresh -> {
                 // 刷新或首次加载 - 重置列表
                 _listData.value = newList
                 _isRefreshing.value = false
@@ -158,9 +206,11 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
 
                     if (elapsedTime < minLoadingTime) {
                         // 延迟设置成功状态
-                        viewModelScope.launch {
+                        stateUpdateJob = viewModelScope.launch {
                             delay(minLoadingTime - elapsedTime)
-                            setFirstLoadSuccessState(newList, hasNextPage)
+                            if (requestId == requestSequence) {
+                                setFirstLoadSuccessState(newList, hasNextPage)
+                            }
                         }
                     } else {
                         setFirstLoadSuccessState(newList, hasNextPage)
@@ -170,15 +220,10 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
                 }
             }
 
-            else -> {
-                // 加载更多 - 先显示加载成功，延迟更新数据
-                viewModelScope.launch {
-                    _loadMoreState.value = LoadMoreState.Success
-                    delay(400)
-                    _listData.value += newList
-                    _loadMoreState.value =
-                        if (hasNextPage) LoadMoreState.PullToLoad else LoadMoreState.NoMore
-                }
+            LoadType.LoadMore -> {
+                _listData.value += newList
+                _loadMoreState.value =
+                    if (hasNextPage) LoadMoreState.PullToLoad else LoadMoreState.NoMore
             }
         }
     }
@@ -186,19 +231,22 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
     /**
      * 处理错误响应
      */
-    protected open fun handleError(message: String?, exception: Throwable?) {
+    private fun handleError(
+        message: String?,
+        exception: Throwable?,
+        loadType: LoadType,
+    ) {
         _isRefreshing.value = false
 
-        if (currentPage == 1) {
-            // 首次加载或刷新失败
-            if (_listData.value.isEmpty()) {
-                _uiState.value = BaseNetWorkListUiState.Error
+        when (loadType) {
+            LoadType.Initial, LoadType.Refresh -> {
+                if (_listData.value.isEmpty()) {
+                    _uiState.value = BaseNetWorkListUiState.Error
+                }
+                _loadMoreState.value = LoadMoreState.PullToLoad
             }
-            _loadMoreState.value = LoadMoreState.PullToLoad
-        } else {
-            // 加载更多失败，回退页码
-            currentPage--
-            _loadMoreState.value = LoadMoreState.Error
+
+            LoadType.LoadMore -> _loadMoreState.value = LoadMoreState.Error
         }
     }
 
@@ -206,23 +254,14 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
      * 重试请求
      */
     fun retryRequest() {
-        currentPage = 1
-        _loadMoreState.value = LoadMoreState.Loading
-        loadListData()
+        startRequest(page = 1, loadType = LoadType.Initial, cancelCurrent = true)
     }
 
     /**
      * 触发下拉刷新
      */
     open fun onRefresh() {
-        // 如果正在加载中，则不重复请求
-        if (_loadMoreState.value == LoadMoreState.Loading) {
-            return
-        }
-
-        _isRefreshing.value = true
-        currentPage = 1
-        loadListData()
+        startRequest(page = 1, loadType = LoadType.Refresh, cancelCurrent = true)
     }
 
     /**
@@ -230,16 +269,19 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
      */
     open fun onLoadMore() {
         // 只有在可加载更多和加载失败状态下才能触发加载
-        if (_loadMoreState.value == LoadMoreState.Loading ||
+        if (requestJob?.isActive == true ||
+            _loadMoreState.value == LoadMoreState.Loading ||
             _loadMoreState.value == LoadMoreState.NoMore ||
             _loadMoreState.value == LoadMoreState.Success
         ) {
             return
         }
 
-        _loadMoreState.value = LoadMoreState.Loading
-        currentPage++
-        loadListData()
+        startRequest(
+            page = currentPage + 1,
+            loadType = LoadType.LoadMore,
+            cancelCurrent = false,
+        )
     }
 
     /**
@@ -264,6 +306,7 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
         // 更新加载状态
         if (newList.isEmpty()) {
             _uiState.value = BaseNetWorkListUiState.Empty
+            _loadMoreState.value = LoadMoreState.NoMore
         } else {
             _uiState.value = BaseNetWorkListUiState.Success
             _loadMoreState.value =
@@ -277,10 +320,10 @@ abstract class BaseNetWorkListViewModel<T : Any> : BaseViewModel() {
      * 推荐在 ViewModel 的 `init` 中调用一次，不依赖 View 层 `LaunchedEffect`。
      * 内部已做去重：重复调用不会重复注册。
      *
-     * @param key 刷新结果的类型安全 Key，默认使用全局的 [RefreshResultKey]
+     * @param key 当前业务域的类型安全刷新 Key
      */
     fun observeRefreshState(
-        key: NavigationResultKey<RefreshResult> = RefreshResultKey,
+        key: NavigationResultKey<RefreshResult>,
     ) {
         if (refreshObserveJob != null) return
         refreshObserveJob = viewModelScope.launch {

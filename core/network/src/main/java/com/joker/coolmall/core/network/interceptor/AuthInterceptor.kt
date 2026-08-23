@@ -1,7 +1,6 @@
 package com.joker.coolmall.core.network.interceptor
 
 import com.joker.coolmall.core.datastore.datasource.auth.AuthStoreDataSource
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
@@ -28,10 +27,7 @@ class AuthInterceptor @Inject constructor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
 
-        // 从 DataStore 获取 token，使用 runBlocking 调用挂起函数
-        val token = runBlocking {
-            authStoreDataSource.getToken() ?: ""
-        }
+        val token = authStoreDataSource.getToken().orEmpty()
 
         // 如果有Token，添加到请求头
         val request = if (token.isNotBlank()) {
@@ -44,4 +40,4 @@ class AuthInterceptor @Inject constructor(
 
         return chain.proceed(request)
     }
-} 
+}

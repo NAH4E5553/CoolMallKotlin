@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 fun rememberRefreshState(
     coroutineScope: CoroutineScope = rememberCoroutineScope()
 ): RefreshState {
-    return remember {
+    return remember(coroutineScope) {
         RefreshState(coroutineScope)
     }
 }

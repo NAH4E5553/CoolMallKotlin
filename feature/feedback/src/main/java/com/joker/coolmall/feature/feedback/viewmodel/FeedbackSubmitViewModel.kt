@@ -13,7 +13,7 @@ import com.joker.coolmall.core.model.request.FeedbackSubmitRequest
 import com.joker.coolmall.core.model.response.DictDataResponse
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.feedback.FeedbackSubmittedResultKey
 import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
@@ -184,8 +184,7 @@ class FeedbackSubmitViewModel @Inject constructor(
                 if (result.isSucceeded && result.data != null) {
                     _uploadedImageUrls.value = result.data ?: emptyList()
 
-                    // 打印上传成功的图片URL列表
-                    LogUtils.d("图片上传成功！上传的图片URL列表: ${result.data}")
+                    LogUtils.d("图片上传成功，共 ${result.data?.size ?: 0} 张")
                     LogUtils.d("共上传 ${result.data?.size ?: 0} 张图片")
 
                     // 图片上传成功后自动提交反馈
@@ -218,7 +217,10 @@ class FeedbackSubmitViewModel @Inject constructor(
             onData = { success ->
                 ToastUtils.showSuccess(R.string.feedback_submit_success)
                 // 使用 NavigationResult 回传刷新信号，通知反馈列表刷新
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(
+                    FeedbackSubmittedResultKey,
+                    RefreshResult(refresh = true),
+                )
             },
             onFinally = { _isSubmitting.value = false }
         )

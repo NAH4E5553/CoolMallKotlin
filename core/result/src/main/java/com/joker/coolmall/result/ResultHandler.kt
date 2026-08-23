@@ -3,7 +3,9 @@ package com.joker.coolmall.result
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -28,7 +30,6 @@ object ResultHandler {
      * @param showToast 是否显示错误Toast，默认为true
      * @param onLoading 加载中状态的回调
      * @param onSuccess 成功状态的回调，接收NetworkResponse对象
-     * @param onSuccessWithData 成功且有数据状态的回调，接收数据对象
      * @param onError 错误状态的回调，接收错误消息和异常
      * @param onFinally 最终执行的回调，无论成功或失败都会执行
      * @author Joker.X
@@ -39,24 +40,23 @@ object ResultHandler {
         showToast: Boolean = true,
         onLoading: () -> Unit = {},
         onSuccess: (NetworkResponse<T>) -> Unit = {},
-        onSuccessWithData: (T) -> Unit = {},
         onError: (String, Throwable?) -> Unit = { _, _ -> },
         onFinally: () -> Unit = {}
-    ) {
-        scope.launch {
-            try {
-                flow.collectLatest { result ->
-                    when (result) {
-                        is Result.Loading -> onLoading()
-                        is Result.Success -> handleSuccess(
-                            response = result.data,
-                            onSuccess = onSuccess,
-                            onSuccessWithData = onSuccessWithData,
-                            showToast = showToast,
-                            onError = onError
-                        )
+    ): Job = scope.launch {
+        try {
+            flow.collectLatest { result ->
+                when (result) {
+                    is Result.Loading -> onLoading()
+                    is Result.Success -> handleSuccess(
+                        response = result.data,
+                        onSuccess = onSuccess,
+                        showToast = showToast,
+                        onError = onError
+                    )
 
-                        is Result.Error -> handleError(
+                    is Result.Error -> {
+                        if (result.exception is CancellationException) throw result.exception
+                        handleError(
                             errorMsg = result.exception.message ?: "网络请求失败",
                             throwable = result.exception,
                             showToast = showToast,
@@ -64,16 +64,18 @@ object ResultHandler {
                         )
                     }
                 }
-            } catch (e: Exception) {
-                handleError(
-                    errorMsg = "请求处理异常",
-                    throwable = e,
-                    showToast = showToast,
-                    onError = onError
-                )
-            } finally {
-                onFinally()
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleError(
+                errorMsg = "请求处理异常",
+                throwable = e,
+                showToast = showToast,
+                onError = onError
+            )
+        } finally {
+            onFinally()
         }
     }
 
@@ -91,7 +93,7 @@ object ResultHandler {
      * @param onFinally 最终执行的回调，无论成功或失败都会执行
      * @author Joker.X
      */
-    fun <T> handleResultWithData(
+    fun <T : Any> handleResultWithData(
         scope: CoroutineScope,
         flow: Flow<Result<NetworkResponse<T>>>,
         showToast: Boolean = true,
@@ -99,17 +101,65 @@ object ResultHandler {
         onData: (T) -> Unit,
         onError: (String, Throwable?) -> Unit = { _, _ -> },
         onFinally: () -> Unit = {}
-    ) {
-        handleResult(
-            scope = scope,
-            flow = flow,
-            showToast = showToast,
-            onLoading = onLoading,
-            onSuccessWithData = onData,
-            onError = onError,
-            onFinally = onFinally
-        )
+    ): Job = scope.launch {
+        try {
+            flow.collectLatest { result ->
+                when (result) {
+                    is Result.Loading -> onLoading()
+                    is Result.Success -> handleSuccessWithData(
+                        response = result.data,
+                        onData = onData,
+                        showToast = showToast,
+                        onError = onError,
+                    )
+
+                    is Result.Error -> {
+                        if (result.exception is CancellationException) throw result.exception
+                        handleError(
+                            errorMsg = result.exception.message ?: "网络请求失败",
+                            throwable = result.exception,
+                            showToast = showToast,
+                            onError = onError,
+                        )
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleError(
+                errorMsg = "请求处理异常",
+                throwable = e,
+                showToast = showToast,
+                onError = onError,
+            )
+        } finally {
+            onFinally()
+        }
     }
+
+    /**
+     * 处理成功响应不包含数据的网络请求。
+     *
+     * 适用于删除、更新等仅依赖业务状态码判断成功的操作。
+     */
+    fun handleResultWithoutData(
+        scope: CoroutineScope,
+        flow: Flow<Result<NetworkResponse<Unit>>>,
+        showToast: Boolean = true,
+        onLoading: () -> Unit = {},
+        onSuccess: () -> Unit = {},
+        onError: (String, Throwable?) -> Unit = { _, _ -> },
+        onFinally: () -> Unit = {},
+    ): Job = handleResult(
+        scope = scope,
+        flow = flow,
+        showToast = showToast,
+        onLoading = onLoading,
+        onSuccess = { onSuccess() },
+        onError = onError,
+        onFinally = onFinally,
+    )
 
     /**
      * 获取完整的异常堆栈信息
@@ -199,7 +249,6 @@ object ResultHandler {
      * @param T 数据类型
      * @param response 网络响应对象
      * @param onSuccess 成功回调
-     * @param onSuccessWithData 成功且有数据回调
      * @param showToast 是否显示Toast
      * @param onError 错误回调
      * @author Joker.X
@@ -207,17 +256,40 @@ object ResultHandler {
     private fun <T> handleSuccess(
         response: NetworkResponse<T>,
         onSuccess: (NetworkResponse<T>) -> Unit,
-        onSuccessWithData: (T) -> Unit,
         showToast: Boolean,
         onError: (String, Throwable?) -> Unit
     ) {
-        onSuccess(response)
-        if (response.isSucceeded) {
-            val data = response.data ?: return
-            onSuccessWithData(data)
-        } else {
+        if (!response.isSucceeded) {
             val errorMsg = response.message ?: "未知错误"
             handleError(errorMsg, Exception(errorMsg), showToast, onError)
+            return
         }
+
+        onSuccess(response)
+    }
+
+    /**
+     * 处理必须包含非空数据的成功响应。
+     */
+    private fun <T : Any> handleSuccessWithData(
+        response: NetworkResponse<T>,
+        onData: (T) -> Unit,
+        showToast: Boolean,
+        onError: (String, Throwable?) -> Unit,
+    ) {
+        if (!response.isSucceeded) {
+            val errorMsg = response.message ?: "未知错误"
+            handleError(errorMsg, Exception(errorMsg), showToast, onError)
+            return
+        }
+
+        val data = response.data
+        if (data == null) {
+            val errorMsg = "响应数据为空"
+            handleError(errorMsg, IllegalStateException(errorMsg), showToast, onError)
+            return
+        }
+
+        onData(data)
     }
 }

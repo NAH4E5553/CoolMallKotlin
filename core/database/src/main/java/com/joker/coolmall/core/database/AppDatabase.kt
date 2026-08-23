@@ -24,7 +24,7 @@ import com.joker.coolmall.core.database.util.CartSpecConverter
         SearchHistoryEntity::class
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(CartSpecConverter::class)
 abstract class AppDatabase : RoomDatabase() {

@@ -13,7 +13,7 @@ import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.request.RefundOrderRequest
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
 import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.result.ResultHandler
@@ -182,7 +182,7 @@ class OrderRefundViewModel @AssistedInject constructor(
             ).asResult(),
             onData = { _ ->
                 // 使用 NavigationResult 回传刷新信号，通知上一个页面刷新
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(OrderChangedResultKey, RefreshResult(refresh = true))
             }
         )
     }

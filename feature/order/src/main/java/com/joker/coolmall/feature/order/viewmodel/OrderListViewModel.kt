@@ -20,7 +20,7 @@ import com.joker.coolmall.navigation.goods.GoodsNavigator
 import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.feature.order.model.OrderStatus
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
 import com.joker.coolmall.navigation.navigate
 import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.result.ResultHandler
@@ -229,7 +229,7 @@ class OrderListViewModel @AssistedInject constructor(
     fun observeRefreshState() {
         if (refreshObserveJob != null) return
         refreshObserveJob = viewModelScope.launch {
-            resultEvents(RefreshResultKey).collect { refreshResult: RefreshResult ->
+            resultEvents(OrderChangedResultKey).collect { refreshResult: RefreshResult ->
                 if (refreshResult.refresh == true) {
                     // 刷新全部标签页
                     refreshSpecificTabs(listOf(0, 1, 2, 3, 4, 5, 6))

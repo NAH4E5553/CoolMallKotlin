@@ -13,7 +13,7 @@ dependencies {
     // 引入网络模块
     implementation(projects.core.network)
     // 引入工具模块
-    api(projects.core.util)
+    implementation(projects.core.util)
     // 引入数据存储模块
     implementation(projects.core.datastore)
     // 引入数据库模块

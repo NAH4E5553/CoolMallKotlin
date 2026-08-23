@@ -4,7 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.joker.coolmall.core.common.base.viewmodel.BaseViewModel
 import com.joker.coolmall.core.data.repository.OrderRepository
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.order.PaymentCompletedResultKey
 import com.joker.coolmall.navigation.navigate
 import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.navigation.order.OrderRoutes
@@ -117,7 +117,7 @@ class OrderPayViewModel @AssistedInject constructor(
             // 其他情况正常返回
             if (isPaySuccess) {
                 // 支付成功，使用 NavigationResult 回传刷新信号
-                popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+                popBackStackWithResult(PaymentCompletedResultKey, RefreshResult(refresh = true))
             } else {
                 navigateBack()
             }

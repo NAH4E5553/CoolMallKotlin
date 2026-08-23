@@ -12,6 +12,7 @@ import com.joker.coolmall.core.model.request.PageRequest
 import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.feature.feedback.R
+import com.joker.coolmall.navigation.feedback.FeedbackSubmittedResultKey
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,7 +40,7 @@ class FeedbackListViewModel @Inject constructor(
     private val _feedbackTypes = MutableStateFlow<List<DictItem>>(emptyList())
 
     init {
-        observeRefreshState()
+        observeRefreshState(FeedbackSubmittedResultKey)
         initLoad()
         loadFeedbackTypes()
     }
@@ -50,11 +51,14 @@ class FeedbackListViewModel @Inject constructor(
      * @return 反馈分页数据的Flow
      * @author Joker.X
      */
-    override fun requestListData(): Flow<NetworkResponse<NetworkPageData<Feedback>>> {
+    override fun requestListData(
+        page: Int,
+        pageSize: Int,
+    ): Flow<NetworkResponse<NetworkPageData<Feedback>>> {
         return feedbackRepository.getFeedbackPage(
             PageRequest(
-                page = super.currentPage,
-                size = super.pageSize
+                page = page,
+                size = pageSize
             )
         )
     }

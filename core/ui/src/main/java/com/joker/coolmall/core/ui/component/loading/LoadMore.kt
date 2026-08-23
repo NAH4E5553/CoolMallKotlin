@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +40,6 @@ import com.joker.coolmall.core.ui.component.text.TextType
  *
  * @param modifier 组件修饰符
  * @param state 当前加载状态，默认为可上拉加载状态
- * @param listState LazyList的状态，用于自动滚动到底部，可为空
  * @param onRetry 加载失败时的重试回调，为空时不可点击重试
  * @author Joker.X
  */
@@ -50,7 +47,6 @@ import com.joker.coolmall.core.ui.component.text.TextType
 fun LoadMore(
     modifier: Modifier = Modifier,
     state: LoadMoreState = LoadMoreState.PullToLoad,
-    listState: LazyListState? = null,
     onRetry: (() -> Unit)? = null
 ) {
     Row(
@@ -77,12 +73,6 @@ fun LoadMore(
                 WeLoading() // 显示加载动画
                 Spacer(modifier = Modifier.width(8.dp))
                 AppText(text = stringResource(R.string.load_more_loading))
-                // 如果提供了列表状态，自动滚动到底部
-                if (listState != null) {
-                    LaunchedEffect(Unit) {
-                        listState.scrollToItem(listState.layoutInfo.totalItemsCount)
-                    }
-                }
             }
 
             // 加载成功状态：显示加载成功提示
@@ -221,4 +211,4 @@ private fun OrderLoadMorePreviewDark() {
             LoadMore(state = LoadMoreState.NoMore)
         }
     }
-} 
+}

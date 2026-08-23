@@ -1,5 +1,7 @@
 package com.joker.coolmall.navigation
 
+import android.os.Handler
+import android.os.Looper
 import androidx.navigation3.runtime.NavKey
 import com.joker.coolmall.core.data.state.AppState
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +25,8 @@ import javax.inject.Singleton
 class AppNavigator @Inject constructor(
     private val appState: AppState,
 ) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     /**
      * 导航控制器访问锁
      */
@@ -54,11 +58,16 @@ class AppNavigator @Inject constructor(
      * @author Joker.X
      */
     fun attachController(navigationController: NavigationController) {
-        synchronized(lock) {
-            controller = navigationController
-            while (pendingCommands.isNotEmpty()) {
-                pendingCommands.removeFirst().execute(navigationController)
+        runOnMainThread {
+            val commands = synchronized(lock) {
+                controller = navigationController
+                buildList {
+                    while (pendingCommands.isNotEmpty()) {
+                        add(pendingCommands.removeFirst())
+                    }
+                }
             }
+            commands.forEach { it.execute(navigationController) }
         }
     }
 
@@ -68,9 +77,11 @@ class AppNavigator @Inject constructor(
      * @author Joker.X
      */
     fun detachController(navigationController: NavigationController) {
-        synchronized(lock) {
-            if (controller === navigationController) {
-                controller = null
+        runOnMainThread {
+            synchronized(lock) {
+                if (controller === navigationController) {
+                    controller = null
+                }
             }
         }
     }
@@ -149,13 +160,22 @@ class AppNavigator @Inject constructor(
      * @author Joker.X
      */
     private fun executeOrEnqueue(command: NavigationCommand) {
-        synchronized(lock) {
-            val currentController = controller
-            if (currentController != null) {
-                command.execute(currentController)
-            } else {
-                pendingCommands.addLast(command)
+        runOnMainThread {
+            val currentController = synchronized(lock) {
+                controller.also {
+                    if (it == null) pendingCommands.addLast(command)
+                }
             }
+            currentController?.let(command::execute)
+        }
+    }
+
+    /** 所有控制器和 back stack 操作都在主线程串行执行。 */
+    private inline fun runOnMainThread(crossinline action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            mainHandler.post { action() }
         }
     }
 

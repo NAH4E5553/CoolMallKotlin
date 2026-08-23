@@ -13,7 +13,8 @@ import com.joker.coolmall.core.model.request.CancelOrderRequest
 import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.RefreshResultKey
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
+import com.joker.coolmall.navigation.order.PaymentCompletedResultKey
 import com.joker.coolmall.navigation.goods.GoodsRoutes
 import com.joker.coolmall.navigation.navigate
 import com.joker.coolmall.navigation.navigateBack
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 /**
@@ -291,7 +293,10 @@ class OrderDetailViewModel @AssistedInject constructor(
     fun observeRefreshState() {
         if (refreshObserveJob != null) return
         refreshObserveJob = viewModelScope.launch {
-            resultEvents(RefreshResultKey).collect { refreshResult: RefreshResult ->
+            merge(
+                resultEvents(PaymentCompletedResultKey),
+                resultEvents(OrderChangedResultKey),
+            ).collect { refreshResult: RefreshResult ->
                 if (refreshResult.refresh == true) {
                     // 刷新订单详情
                     retryRequest()
@@ -311,7 +316,7 @@ class OrderDetailViewModel @AssistedInject constructor(
     fun handleBackClick() {
         if (shouldRefreshListOnBack) {
             // 使用 NavigationResult 回传刷新状态给上一个页面（通常是订单列表）
-            popBackStackWithResult(RefreshResultKey, RefreshResult(refresh = true))
+            popBackStackWithResult(OrderChangedResultKey, RefreshResult(refresh = true))
             shouldRefreshListOnBack = false
         } else {
             navigateBack()

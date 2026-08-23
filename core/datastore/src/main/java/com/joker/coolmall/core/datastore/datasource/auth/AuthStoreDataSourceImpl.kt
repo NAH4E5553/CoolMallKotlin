@@ -18,6 +18,13 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
     }
 
     private val json = Json { ignoreUnknownKeys = true }
+    private val authLock = Any()
+
+    @Volatile
+    private var isCacheInitialized = false
+
+    @Volatile
+    private var cachedAuth: Auth? = null
 
     /**
      * 保存认证信息
@@ -25,9 +32,13 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
      * @param auth 认证信息对象
      * @author Joker.X
      */
-    override suspend fun saveAuth(auth: Auth) {
-        val authJson = json.encodeToString(auth)
-        MMKVUtils.putString(KEY_AUTH, authJson)
+    override fun saveAuth(auth: Auth) {
+        synchronized(authLock) {
+            val authJson = json.encodeToString(auth)
+            MMKVUtils.putString(KEY_AUTH, authJson)
+            cachedAuth = auth
+            isCacheInitialized = true
+        }
     }
 
     /**
@@ -36,14 +47,24 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
      * @return 认证信息对象，如不存在则返回null
      * @author Joker.X
      */
-    override suspend fun getAuth(): Auth? {
-        val authJson = MMKVUtils.getString(KEY_AUTH, "")
-        if (authJson.isEmpty()) return null
+    override fun getAuth(): Auth? {
+        if (isCacheInitialized) return cachedAuth
 
-        return try {
-            json.decodeFromString<Auth>(authJson)
-        } catch (e: Exception) {
-            null
+        return synchronized(authLock) {
+            if (isCacheInitialized) return@synchronized cachedAuth
+
+            val authJson = MMKVUtils.getString(KEY_AUTH, "")
+            cachedAuth = if (authJson.isEmpty()) {
+                null
+            } else {
+                try {
+                    json.decodeFromString<Auth>(authJson)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            isCacheInitialized = true
+            cachedAuth
         }
     }
 
@@ -53,7 +74,7 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
      * @return token字符串，如不存在则返回null
      * @author Joker.X
      */
-    override suspend fun getToken(): String? {
+    override fun getToken(): String? {
         return getAuth()?.token
     }
 
@@ -62,8 +83,12 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
      *
      * @author Joker.X
      */
-    override suspend fun clearAuth() {
-        MMKVUtils.remove(KEY_AUTH)
+    override fun clearAuth() {
+        synchronized(authLock) {
+            MMKVUtils.remove(KEY_AUTH)
+            cachedAuth = null
+            isCacheInitialized = true
+        }
     }
 
     /**
@@ -72,8 +97,8 @@ class AuthStoreDataSourceImpl @Inject constructor() : AuthStoreDataSource {
      * @return 是否已登录
      * @author Joker.X
      */
-    override suspend fun isLoggedIn(): Boolean {
+    override fun isLoggedIn(): Boolean {
         val auth = getAuth() ?: return false
         return !auth.isExpired() && auth.token.isNotEmpty()
     }
-} 
+}
