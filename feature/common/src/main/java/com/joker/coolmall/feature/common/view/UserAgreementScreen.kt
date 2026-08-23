@@ -1,5 +1,6 @@
 package com.joker.coolmall.feature.common.view
 
+import android.os.Build
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,7 +95,9 @@ private fun UserAgreementContentView(html: String) {
                     displayZoomControls = false
                     // 不需要存储
                     domStorageEnabled = false
-                    safeBrowsingEnabled = true
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        safeBrowsingEnabled = true
+                    }
                 }
 
                 // 加载 HTML 内容

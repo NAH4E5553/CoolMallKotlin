@@ -1,0 +1,96 @@
+name: Android CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "17"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Build DevDebug APK
+        run: ./gradlew :app:assembleDevDebug --no-daemon --stacktrace
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Run DevDebug unit tests
+        run: ./gradlew testDevDebugUnitTest --no-daemon --stacktrace
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-reports
+          path: |
+            **/build/reports/tests/testDevDebugUnitTest/
+            **/build/test-results/testDevDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  lint:
+    name: Android Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Run Android Lint
+        run: ./gradlew lintDevDebug --no-daemon --stacktrace
+
+      - name: Upload Android Lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-lint-reports
+          path: "**/build/reports/lint-results-*"
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,6 +1,7 @@
 package com.joker.coolmall.feature.common.view
 
 import android.content.Intent
+import android.os.Build
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -235,7 +236,9 @@ private fun WebViewContent(
                         setSupportMultipleWindows(false)
                         javaScriptCanOpenWindowsAutomatically = true
                         domStorageEnabled = true
-                        safeBrowsingEnabled = true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            safeBrowsingEnabled = true
+                        }
                         mediaPlaybackRequiresUserGesture = false
                     }
 
