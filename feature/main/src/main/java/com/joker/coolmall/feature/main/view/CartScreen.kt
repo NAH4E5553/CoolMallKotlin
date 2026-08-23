@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceHorizontalSmall
 import com.joker.coolmall.core.designsystem.theme.SpacePaddingMedium
@@ -73,21 +73,21 @@ internal fun CartRoute(
     ),
 ) {
     // 购物车商品列表
-    val carts by viewModel.cartItems.collectAsState()
+    val carts by viewModel.cartItems.collectAsStateWithLifecycle()
     // 购物车是否为空
-    val isEmpty by viewModel.isEmpty.collectAsState()
+    val isEmpty by viewModel.isEmpty.collectAsStateWithLifecycle()
     // 是否处于编辑模式
-    val isEditing by viewModel.isEditing.collectAsState()
+    val isEditing by viewModel.isEditing.collectAsStateWithLifecycle()
     // 是否全选状态
-    val isAllSelected by viewModel.isAllSelected.collectAsState()
+    val isAllSelected by viewModel.isAllSelected.collectAsStateWithLifecycle()
     // 已选商品数量
-    val selectedCount by viewModel.selectedCount.collectAsState()
+    val selectedCount by viewModel.selectedCount.collectAsStateWithLifecycle()
     // 已选商品总金额
-    val selectedTotalAmount by viewModel.selectedTotalAmount.collectAsState()
+    val selectedTotalAmount by viewModel.selectedTotalAmount.collectAsStateWithLifecycle()
     // 是否显示返回按钮
-    val showBackIcon by viewModel.showBackIcon.collectAsState()
+    val showBackIcon by viewModel.showBackIcon.collectAsStateWithLifecycle()
     // 已选商品和规格ID的映射
-    val selectedItems by viewModel.selectedItems.collectAsState()
+    val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
 
     CartScreen(
         carts = carts,
