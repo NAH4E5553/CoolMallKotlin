@@ -10,6 +10,7 @@ import com.joker.coolmall.core.data.state.AppState
 import com.joker.coolmall.core.model.entity.CsMsg
 import com.joker.coolmall.core.model.request.MessagePageRequest
 import com.joker.coolmall.core.model.request.ReadMessageRequest
+import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.feature.cs.state.WebSocketConnectionState
 import com.joker.coolmall.feature.cs.util.ChatSoundManager
@@ -18,6 +19,8 @@ import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,6 +32,36 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "ChatViewModel"
+
+/**
+ * 合并首屏历史消息，并保留请求期间新到达的实时消息。
+ */
+internal fun mergeFirstPageMessages(
+    currentMessages: List<CsMsg>,
+    messageIdsAtRequestStart: Set<Long>,
+    pageMessages: List<CsMsg>,
+): List<CsMsg> = buildList {
+    val addedIds = mutableSetOf<Long>()
+    val liveMessages = currentMessages.filter { it.id !in messageIdsAtRequestStart }
+
+    (liveMessages + pageMessages).forEach { message ->
+        if (addedIds.add(message.id)) add(message)
+    }
+}
+
+/**
+ * 将更早的历史消息追加到当前倒序消息列表，并按消息 ID 去重。
+ */
+internal fun appendOlderMessages(
+    currentMessages: List<CsMsg>,
+    pageMessages: List<CsMsg>,
+): List<CsMsg> = buildList {
+    val addedIds = mutableSetOf<Long>()
+
+    (currentMessages + pageMessages).forEach { message ->
+        if (addedIds.add(message.id)) add(message)
+    }
+}
 
 /**
  * 客服聊天 ViewModel
@@ -45,6 +78,11 @@ class ChatViewModel @Inject constructor(
     private val appState: AppState,
     @param:ApplicationContext private val context: Context,
 ) : BaseViewModel() {
+    private enum class LoadType {
+        Initial,
+        Refresh,
+        LoadMore,
+    }
 
     // 页面UI状态
     private val _uiState = MutableStateFlow<BaseNetWorkUiState<Unit>>(BaseNetWorkUiState.Loading)
@@ -82,9 +120,16 @@ class ChatViewModel @Inject constructor(
     val inputText: StateFlow<String> = _inputText.asStateFlow()
 
     // 分页相关
-    private var currentPage = 1
+    // 仅表示已经成功提交的历史页；0 表示首屏尚未成功加载。
+    private var currentPage = 0
     private val pageSize = 10
     private var hasMoreData = true
+
+    /** 当前历史消息请求。刷新或重试时用于取消旧请求。 */
+    private var historyRequestJob: Job? = null
+
+    /** 请求序号，用于阻止取消后仍返回的旧请求提交消息。 */
+    private var historyRequestSequence = 0L
 
     // WebSocket管理器
     private val webSocketManager = WebSocketManager()
@@ -107,11 +152,15 @@ class ChatViewModel @Inject constructor(
      */
     private fun setupWebSocketCallbacks() {
         webSocketManager.setOnMessageReceived { message ->
-            addNewMessage(message)
+            viewModelScope.launch {
+                addNewMessage(message)
+            }
         }
 
         webSocketManager.setOnConnectionStateChanged { state ->
-            _connectionState.value = state
+            viewModelScope.launch {
+                _connectionState.value = state
+            }
         }
     }
 
@@ -155,74 +204,125 @@ class ChatViewModel @Inject constructor(
      *
      * @author Joker.X
      */
-    fun loadHistoryMessages() {
-        if (_isLoadingHistory.value) return
+    private fun loadHistoryMessages() {
+        startHistoryRequest(
+            requestPage = 1,
+            loadType = LoadType.Initial,
+            cancelCurrent = true,
+        )
+    }
 
+    /**
+     * 使用不可变页码快照发起历史消息请求。
+     */
+    private fun startHistoryRequest(
+        requestPage: Int,
+        loadType: LoadType,
+        cancelCurrent: Boolean,
+    ) {
         val sessionId = _sessionId.value
         if (sessionId <= 0) return
 
-        LogUtils.d(TAG, "开始加载历史消息: sessionId = $sessionId, page = $currentPage")
+        if (cancelCurrent) {
+            historyRequestSequence++
+            historyRequestJob?.cancel()
+            historyRequestJob = null
+        } else if (historyRequestJob?.isActive == true) {
+            return
+        }
+
+        val requestId = ++historyRequestSequence
+        val messageIdsAtRequestStart = _messages.value.mapTo(mutableSetOf()) { it.id }
+        val previousLoadMoreState = _loadMoreState.value
+
+        LogUtils.d(TAG, "开始加载历史消息: sessionId = $sessionId, page = $requestPage")
         _isLoadingHistory.value = true
 
         // 如果是加载更多，设置加载状态
-        if (currentPage > 1) {
+        if (loadType == LoadType.LoadMore) {
             _loadMoreState.value = LoadMoreState.Loading
         }
 
         val params = MessagePageRequest(
             sessionId = sessionId,
-            page = currentPage,
+            page = requestPage,
             size = pageSize
         )
 
-        ResultHandler.handleResultWithData(
+        historyRequestJob = ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = customerServiceRepository.getMessagePage(params).asResult(),
             onData = { data ->
-                val newMessages = data.list ?: emptyList()
-                val pagination = data.pagination
-
-                LogUtils.d(TAG, "历史消息加载成功: ${newMessages.size} 条消息")
-
-                // 计算是否还有更多数据
-                hasMoreData = if (pagination != null) {
-                    val total = pagination.total ?: 0
-                    val size = pagination.size ?: pageSize
-                    val currentPageNum = pagination.page ?: currentPage
-                    size * currentPageNum < total
-                } else {
-                    newMessages.size >= pageSize
+                if (requestId == historyRequestSequence) {
+                    handleHistorySuccess(
+                        requestPage = requestPage,
+                        loadType = loadType,
+                        messageIdsAtRequestStart = messageIdsAtRequestStart,
+                        data = data,
+                    )
                 }
-
-                if (currentPage == 1) {
-                    // 首次加载或刷新
-                    _messages.value = newMessages
-                } else {
-                    // 加载更多 - 将新消息添加到列表末尾（因为是倒序显示）
-                    // 去重处理：过滤掉已存在的消息
-                    val currentMessages = _messages.value
-                    val existingIds = currentMessages.map { it.id }.toSet()
-                    val uniqueNewMessages = newMessages.filter { it.id !in existingIds }
-                    _messages.value = currentMessages + uniqueNewMessages
-                }
-
-                _isLoadingHistory.value = false
-
-                // 更新加载更多状态
-                _loadMoreState.value =
-                    if (hasMoreData) LoadMoreState.PullToLoad else LoadMoreState.NoMore
             },
             onError = { message, _ ->
-                LogUtils.e(TAG, "历史消息加载失败: $message")
-                _isLoadingHistory.value = false
+                if (requestId == historyRequestSequence) {
+                    LogUtils.e(TAG, "历史消息加载失败: $message")
+                    _isLoadingHistory.value = false
 
-                if (currentPage > 1) {
-                    // 加载更多失败，回退页码
-                    currentPage--
-                    _loadMoreState.value = LoadMoreState.Error
+                    if (loadType == LoadType.LoadMore) {
+                        _loadMoreState.value = LoadMoreState.Error
+                    } else {
+                        _loadMoreState.value = when (previousLoadMoreState) {
+                            LoadMoreState.Loading, LoadMoreState.Success -> {
+                                LoadMoreState.PullToLoad
+                            }
+
+                            else -> previousLoadMoreState
+                        }
+                    }
                 }
             }
         )
+    }
+
+    /**
+     * 提交与当前请求身份匹配的历史消息响应。
+     */
+    private fun handleHistorySuccess(
+        requestPage: Int,
+        loadType: LoadType,
+        messageIdsAtRequestStart: Set<Long>,
+        data: NetworkPageData<CsMsg>,
+    ) {
+        val newMessages = data.list ?: emptyList()
+        val pagination = data.pagination
+
+        LogUtils.d(TAG, "历史消息加载成功: ${newMessages.size} 条消息")
+
+        hasMoreData = if (pagination != null) {
+            val total = pagination.total ?: 0
+            val size = pagination.size ?: pageSize
+            val currentPageNum = pagination.page ?: requestPage
+            size * currentPageNum < total
+        } else {
+            newMessages.size >= pageSize
+        }
+
+        _messages.value = when (loadType) {
+            LoadType.Initial, LoadType.Refresh -> mergeFirstPageMessages(
+                currentMessages = _messages.value,
+                messageIdsAtRequestStart = messageIdsAtRequestStart,
+                pageMessages = newMessages,
+            )
+
+            LoadType.LoadMore -> appendOlderMessages(
+                currentMessages = _messages.value,
+                pageMessages = newMessages,
+            )
+        }
+
+        currentPage = requestPage
+        _isLoadingHistory.value = false
+        _loadMoreState.value =
+            if (hasMoreData) LoadMoreState.PullToLoad else LoadMoreState.NoMore
     }
 
     /**
@@ -232,15 +332,19 @@ class ChatViewModel @Inject constructor(
      */
     fun loadMoreMessages() {
         // 检查是否可以加载更多
-        if (_loadMoreState.value == LoadMoreState.Loading ||
+        if (historyRequestJob?.isActive == true ||
+            _loadMoreState.value == LoadMoreState.Loading ||
             _loadMoreState.value == LoadMoreState.NoMore ||
             !hasMoreData
         ) {
             return
         }
 
-        currentPage++
-        loadHistoryMessages()
+        startHistoryRequest(
+            requestPage = currentPage + 1,
+            loadType = LoadType.LoadMore,
+            cancelCurrent = false,
+        )
     }
 
     /**
@@ -249,11 +353,12 @@ class ChatViewModel @Inject constructor(
      * @author Joker.X
      */
     fun refreshMessages() {
-        if (_isLoadingHistory.value) return
-
-        currentPage = 1
         hasMoreData = true
-        loadHistoryMessages()
+        startHistoryRequest(
+            requestPage = 1,
+            loadType = LoadType.Refresh,
+            cancelCurrent = true,
+        )
     }
 
     /**
@@ -262,7 +367,7 @@ class ChatViewModel @Inject constructor(
      * @author Joker.X
      */
     fun connectWebSocket() {
-        val token = appState?.auth?.value?.token ?: ""
+        val token = appState.auth.value?.token ?: ""
         webSocketManager.connect(token, viewModelScope)
     }
 
@@ -369,6 +474,8 @@ class ChatViewModel @Inject constructor(
             try {
                 customerServiceRepository.readMessage(request).first()
                 LogUtils.d(TAG, "消息已标记为已读")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 LogUtils.e(TAG, "标记消息已读失败", e)
             }
