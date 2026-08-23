@@ -51,7 +51,6 @@ import com.joker.coolmall.core.designsystem.component.SmallPaddingColumn
 import com.joker.coolmall.core.designsystem.component.SpaceBetweenRow
 import com.joker.coolmall.core.designsystem.component.StartRow
 import com.joker.coolmall.core.designsystem.component.VerticalScroll
-import com.joker.coolmall.core.designsystem.component.WrapColumn
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.ColorDanger
 import com.joker.coolmall.core.designsystem.theme.CommonIcon
@@ -67,6 +66,8 @@ import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXSmall
 import com.joker.coolmall.core.model.entity.Goods
 import com.joker.coolmall.core.model.entity.GoodsSpec
 import com.joker.coolmall.core.model.entity.SelectedGoods
+import com.joker.coolmall.core.model.preview.previewGoods
+import com.joker.coolmall.core.model.preview.previewGoodsSpec
 import com.joker.coolmall.core.ui.R
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.button.AppButtonBordered
@@ -268,12 +269,15 @@ private fun SpecSelectModalContentView(
     val density = LocalDensity.current
     val screenHeight = with(density) { windowInfo.containerSize.height.toDp() }
 
-    // 动态计算规格选择区域的最大高度
-    // 考虑头部信息(约120dp)、标题和间距(约60dp)、数量选择器(约60dp)、底部按钮(约60dp)、安全边距(约80dp)
-    val reservedHeight = 380.dp
-    val maxSpecHeight = (screenHeight - reservedHeight).coerceAtLeast(200.dp)
+    // 限制弹层内容的整体高度；规格区域通过 weight 使用其余空间并独立滚动。
+    // fill = false 使少量规格时仍按内容高度展示，不会无条件撑满屏幕。
+    val maxContentHeight = screenHeight * 0.8f
 
-    WrapColumn {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxContentHeight)
+    ) {
         // 商品基本信息
         goods?.let {
             SpecHeaderInfo(it, currentSpec)
@@ -300,7 +304,7 @@ private fun SpecSelectModalContentView(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxSpecHeight)
+                .weight(1f, fill = false)
         ) {
             VerticalScroll {
                 AnimatedContent(
@@ -358,6 +362,33 @@ private fun SpecSelectModalContentView(
             selectedSpec = currentSpec,
             onAddToCart = onAddToCart,
             onBuyNow = onBuyNow
+        )
+    }
+}
+
+/**
+ * 9 个规格且已选择时的回归预览，用于检查规格滚动和底部操作区高度。
+ */
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun SpecSelectModalManySpecsPreview() {
+    val baseSpec = checkNotNull(previewGoodsSpec)
+    val specs = List(9) { index ->
+        baseSpec.copy(
+            id = index.toLong() + 1,
+            name = "规格 ${index + 1}",
+            sortNum = index + 1,
+        )
+    }
+
+    AppTheme {
+        SpecSelectModalContentView(
+            goods = previewGoods,
+            specs = specs,
+            currentSpec = specs[1],
+            selectedSpecIndex = 1,
+            quantity = 1,
+            isGridMode = true,
         )
     }
 }
