@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.user.view
 
 import androidx.compose.foundation.clickable
@@ -16,7 +18,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.VerticalList
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -35,7 +37,6 @@ import com.joker.coolmall.core.designsystem.theme.ShapeMedium
 import com.joker.coolmall.core.designsystem.theme.SpacePaddingMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.model.entity.Address
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.navigation.user.UserRoutes
 import com.joker.coolmall.core.ui.component.bottombar.AppBottomButton
 import com.joker.coolmall.core.ui.component.list.AppListItem
@@ -45,6 +46,7 @@ import com.joker.coolmall.feature.user.R
 import com.joker.coolmall.feature.user.component.RegionPickerModal
 import com.joker.coolmall.feature.user.data.RegionData
 import com.joker.coolmall.feature.user.viewmodel.AddressDetailViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 收货地址详情路由
@@ -59,17 +61,19 @@ internal fun AddressDetailRoute(
     viewModel: AddressDetailViewModel = hiltViewModel<AddressDetailViewModel, AddressDetailViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val contactName by viewModel.contactName.collectAsState()
-    val phone by viewModel.phone.collectAsState()
-    val province by viewModel.province.collectAsState()
-    val city by viewModel.city.collectAsState()
-    val district by viewModel.district.collectAsState()
-    val detailAddress by viewModel.detailAddress.collectAsState()
-    val isDefaultAddress by viewModel.isDefaultAddress.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val contactName by viewModel.contactName.collectAsStateWithLifecycle()
+    val phone by viewModel.phone.collectAsStateWithLifecycle()
+    val province by viewModel.province.collectAsStateWithLifecycle()
+    val city by viewModel.city.collectAsStateWithLifecycle()
+    val district by viewModel.district.collectAsStateWithLifecycle()
+    val detailAddress by viewModel.detailAddress.collectAsStateWithLifecycle()
+    val isDefaultAddress by viewModel.isDefaultAddress.collectAsStateWithLifecycle()
+    val isFormValid by viewModel.isFormValid.collectAsStateWithLifecycle()
+    val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
 
     AddressDetailScreen(
         isEditMode = viewModel.isEditMode,
@@ -81,13 +85,15 @@ internal fun AddressDetailRoute(
         district = district,
         detailAddress = detailAddress,
         isDefaultAddress = isDefaultAddress,
+        isFormValid = isFormValid,
+        isSaving = isSaving,
         onContactNameChange = viewModel::updateContactName,
         onPhoneChange = viewModel::updatePhone,
         onRegionChange = viewModel::updateRegion,
         onDetailAddressChange = viewModel::updateDetailAddress,
         onDefaultAddressChange = viewModel::updateIsDefaultAddress,
         onSaveClick = viewModel::saveAddress,
-        onRetry = viewModel::retryRequest
+        onRetry = viewModel::retryRequest,
     )
 }
 
@@ -103,6 +109,8 @@ internal fun AddressDetailRoute(
  * @param district 区
  * @param detailAddress 详细地址
  * @param isDefaultAddress 是否为默认地址
+ * @param isFormValid 表单是否有效
+ * @param isSaving 是否正在保存地址
  * @param onContactNameChange 联系人变更回调
  * @param onPhoneChange 手机号变更回调
  * @param onRegionChange 地区变更回调
@@ -124,13 +132,15 @@ internal fun AddressDetailScreen(
     district: String = "",
     detailAddress: String = "",
     isDefaultAddress: Boolean = false,
+    isFormValid: Boolean = false,
+    isSaving: Boolean = false,
     onContactNameChange: (String) -> Unit = {},
     onPhoneChange: (String) -> Unit = {},
     onRegionChange: (String, String, String) -> Unit = { _, _, _ -> },
     onDetailAddressChange: (String) -> Unit = {},
     onDefaultAddressChange: (Boolean) -> Unit = {},
     onSaveClick: () -> Unit = {},
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
 ) {
     val titleResId = if (isEditMode) R.string.edit_address else R.string.add_address
 
@@ -141,15 +151,17 @@ internal fun AddressDetailScreen(
             if (uiState is BaseNetWorkUiState.Success) {
                 AppBottomButton(
                     text = stringResource(id = R.string.save_address),
-                    onClick = onSaveClick
+                    onClick = onSaveClick,
+                    enabled = isFormValid && !isSaving,
+                    loading = isSaving,
                 )
             }
         },
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             AddressDetailContentView(
                 contactName = contactName,
@@ -163,7 +175,7 @@ internal fun AddressDetailScreen(
                 onPhoneChange = onPhoneChange,
                 onRegionChange = onRegionChange,
                 onDetailAddressChange = onDetailAddressChange,
-                onDefaultAddressChange = onDefaultAddressChange
+                onDefaultAddressChange = onDefaultAddressChange,
             )
         }
     }
@@ -199,7 +211,7 @@ private fun AddressDetailContentView(
     onPhoneChange: (String) -> Unit,
     onRegionChange: (String, String, String) -> Unit,
     onDetailAddressChange: (String) -> Unit,
-    onDefaultAddressChange: (Boolean) -> Unit
+    onDefaultAddressChange: (Boolean) -> Unit,
 ) {
     // 地区选择器状态
     var showRegionPicker by remember { mutableStateOf(false) }
@@ -207,19 +219,19 @@ private fun AddressDetailContentView(
     val interactionSource = remember { MutableInteractionSource() }
 
     VerticalList(
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
         // 基本信息卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = ShapeMedium
+            shape = ShapeMedium,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(SpacePaddingMedium),
                 // 设置每项之间的间隔
-                verticalArrangement = Arrangement.spacedBy(SpaceVerticalMedium)
+                verticalArrangement = Arrangement.spacedBy(SpaceVerticalMedium),
             ) {
                 // 联系人
                 OutlinedTextField(
@@ -231,8 +243,8 @@ private fun AddressDetailContentView(
                     singleLine = true,
                     shape = ShapeMedium,
                     keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    )
+                        imeAction = ImeAction.Next,
+                    ),
                 )
 
                 // 手机号
@@ -246,8 +258,8 @@ private fun AddressDetailContentView(
                     shape = ShapeMedium,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Phone,
-                        imeAction = ImeAction.Next
-                    )
+                        imeAction = ImeAction.Next,
+                    ),
                 )
 
                 // 省市区
@@ -255,7 +267,9 @@ private fun AddressDetailContentView(
                     OutlinedTextField(
                         value = if (province.isNotEmpty() && city.isNotEmpty() && district.isNotEmpty()) {
                             "$province $city $district"
-                        } else "",
+                        } else {
+                            ""
+                        },
                         onValueChange = {},
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = { ArrowRightIcon() },
@@ -263,7 +277,7 @@ private fun AddressDetailContentView(
                         label = { Text(text = stringResource(id = R.string.region)) },
                         placeholder = { Text(text = stringResource(id = R.string.please_select_region)) },
                         singleLine = true,
-                        enabled = true
+                        enabled = true,
                     )
                     // 添加一个透明覆盖层来捕获点击事件
                     Box(
@@ -271,10 +285,10 @@ private fun AddressDetailContentView(
                             .matchParentSize()
                             .clickable(
                                 interactionSource = interactionSource,
-                                indication = null
+                                indication = null,
                             ) {
                                 showRegionPicker = true
-                            }
+                            },
                     )
                 }
 
@@ -290,8 +304,8 @@ private fun AddressDetailContentView(
                     minLines = 3,
                     maxLines = 5,
                     keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    )
+                        imeAction = ImeAction.Done,
+                    ),
                 )
             }
         }
@@ -299,7 +313,7 @@ private fun AddressDetailContentView(
         // 设置默认地址开关
         DefaultAddressSwitch(
             isDefault = isDefaultAddress,
-            onValueChange = onDefaultAddressChange
+            onValueChange = onDefaultAddressChange,
         )
     }
 
@@ -317,7 +331,9 @@ private fun AddressDetailContentView(
         },
         initialRegion = if (province.isNotEmpty() && city.isNotEmpty() && district.isNotEmpty()) {
             "$province $city $district"
-        } else ""
+        } else {
+            ""
+        },
     )
 }
 
@@ -329,10 +345,7 @@ private fun AddressDetailContentView(
  * @author Joker.X
  */
 @Composable
-private fun DefaultAddressSwitch(
-    isDefault: Boolean,
-    onValueChange: (Boolean) -> Unit,
-) {
+private fun DefaultAddressSwitch(isDefault: Boolean, onValueChange: (Boolean) -> Unit) {
     Card {
         AppListItem(
             title = stringResource(id = R.string.set_default_address),
@@ -341,9 +354,9 @@ private fun DefaultAddressSwitch(
             trailingContent = {
                 Switch(
                     checked = isDefault,
-                    onCheckedChange = onValueChange
+                    onCheckedChange = onValueChange,
                 )
-            }
+            },
         )
     }
 }

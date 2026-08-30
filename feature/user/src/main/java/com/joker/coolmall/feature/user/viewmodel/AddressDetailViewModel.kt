@@ -5,10 +5,11 @@ import com.joker.coolmall.core.common.base.viewmodel.BaseNetWorkViewModel
 import com.joker.coolmall.core.data.repository.AddressRepository
 import com.joker.coolmall.core.model.entity.Address
 import com.joker.coolmall.core.model.response.NetworkResponse
-import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.core.navigation.user.AddressChangedResultKey
 import com.joker.coolmall.core.navigation.user.UserRoutes
+import com.joker.coolmall.core.util.validation.ValidationUtil
+import com.joker.coolmall.navigation.RefreshResult
+import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.assisted.Assisted
@@ -17,7 +18,11 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * 收货地址详情ViewModel
@@ -29,7 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 @HiltViewModel(assistedFactory = AddressDetailViewModel.Factory::class)
 class AddressDetailViewModel @AssistedInject constructor(
     @Assisted navKey: UserRoutes.AddressDetail,
-    private val addressRepository: AddressRepository
+    private val addressRepository: AddressRepository,
 ) : BaseNetWorkViewModel<Address>() {
     // 从路由获取参数
     private val addressDetailRoute = navKey
@@ -79,6 +84,37 @@ class AddressDetailViewModel @AssistedInject constructor(
     private val _isDefaultAddress = MutableStateFlow(false)
     val isDefaultAddress: StateFlow<Boolean> = _isDefaultAddress
 
+    /**
+     * 表单是否有效
+     */
+    val isFormValid: StateFlow<Boolean> = combine(
+        _contactName,
+        _phone,
+        _province,
+        _city,
+        _district,
+        _detailAddress,
+    ) { values: Array<String> ->
+        isAddressFormValid(
+            contactName = values[0],
+            phone = values[1],
+            province = values[2],
+            city = values[3],
+            district = values[4],
+            detailAddress = values[5],
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = false,
+    )
+
+    /**
+     * 是否正在保存地址
+     */
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     init {
         // 如果是编辑模式且地址ID有效，则执行请求
         if (addressDetailRoute.isEditMode && addressDetailRoute.addressId > 0) {
@@ -96,9 +132,8 @@ class AddressDetailViewModel @AssistedInject constructor(
      * @return 网络响应的Flow
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<Address>> {
-        return addressRepository.getAddressInfo(addressDetailRoute.addressId)
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<Address>> =
+        addressRepository.getAddressInfo(addressDetailRoute.addressId)
 
     /**
      * 更新表单数据
@@ -177,17 +212,8 @@ class AddressDetailViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun saveAddress() {
-        val address = Address(
-            // 编辑模式下使用已有地址ID，新建模式下为 0
-            id = if (isEditMode) addressDetailRoute.addressId else 0L,
-            contact = _contactName.value,
-            phone = _phone.value,
-            province = _province.value,
-            city = _city.value,
-            district = _district.value,
-            address = _detailAddress.value,
-            isDefault = _isDefaultAddress.value
-        )
+        val address = createValidatedAddress() ?: return
+        if (!_isSaving.compareAndSet(expect = false, update = true)) return
 
         if (isEditMode) {
             updateAddress(address)
@@ -195,6 +221,64 @@ class AddressDetailViewModel @AssistedInject constructor(
             addAddress(address)
         }
     }
+
+    /**
+     * 根据当前表单快照创建已校验并规范化的地址
+     *
+     * @return 表单有效时返回地址，否则返回 null
+     */
+    private fun createValidatedAddress(): Address? {
+        val contactName = _contactName.value.trim()
+        val phone = _phone.value.trim()
+        val province = _province.value.trim()
+        val city = _city.value.trim()
+        val district = _district.value.trim()
+        val detailAddress = _detailAddress.value.trim()
+
+        if (
+            !isAddressFormValid(
+                contactName = contactName,
+                phone = phone,
+                province = province,
+                city = city,
+                district = district,
+                detailAddress = detailAddress,
+            )
+        ) {
+            return null
+        }
+
+        val address = Address(
+            // 编辑模式下使用已有地址ID，新建模式下为 0
+            id = if (isEditMode) addressDetailRoute.addressId else 0L,
+            contact = contactName,
+            phone = phone,
+            province = province,
+            city = city,
+            district = district,
+            address = detailAddress,
+            isDefault = _isDefaultAddress.value,
+        )
+
+        return address
+    }
+
+    /**
+     * 校验地址表单字段
+     */
+    private fun isAddressFormValid(
+        contactName: String,
+        phone: String,
+        province: String,
+        city: String,
+        district: String,
+        detailAddress: String,
+    ): Boolean = contactName.isNotBlank() &&
+        ValidationUtil.isValidPhone(phone.trim()) &&
+        province.isNotBlank() &&
+        city.isNotBlank() &&
+        district.isNotBlank() &&
+        detailAddress.isNotBlank()
 
     /**
      * 修改地址
@@ -209,7 +293,8 @@ class AddressDetailViewModel @AssistedInject constructor(
             onSuccess = {
                 // 使用 NavigationResult 回传刷新信号，通知地址列表页面刷新
                 popBackStackWithResult(AddressChangedResultKey, RefreshResult(refresh = true))
-            }
+            },
+            onFinally = { _isSaving.value = false },
         )
     }
 
@@ -226,7 +311,8 @@ class AddressDetailViewModel @AssistedInject constructor(
             onSuccess = { _ ->
                 // 使用 NavigationResult 回传刷新信号，通知地址列表页面刷新
                 popBackStackWithResult(AddressChangedResultKey, RefreshResult(refresh = true))
-            }
+            },
+            onFinally = { _isSaving.value = false },
         )
     }
 
