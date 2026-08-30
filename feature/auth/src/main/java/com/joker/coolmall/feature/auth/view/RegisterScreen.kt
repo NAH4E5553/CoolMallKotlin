@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.auth.view
 
 import android.app.Activity
@@ -20,8 +22,6 @@ import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
 import com.joker.coolmall.core.model.entity.Captcha
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.util.permission.PermissionUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
@@ -34,6 +34,8 @@ import com.joker.coolmall.feature.auth.component.PhoneInputField
 import com.joker.coolmall.feature.auth.component.UserAgreement
 import com.joker.coolmall.feature.auth.component.VerificationCodeField
 import com.joker.coolmall.feature.auth.viewmodel.RegisterViewModel
+import com.joker.coolmall.navigation.common.CommonNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 注册路由
@@ -42,9 +44,7 @@ import com.joker.coolmall.feature.auth.viewmodel.RegisterViewModel
  * @author Joker.X
  */
 @Composable
-internal fun RegisterRoute(
-    viewModel: RegisterViewModel = hiltViewModel()
-) {
+internal fun RegisterRoute(viewModel: RegisterViewModel = hiltViewModel()) {
     val context = LocalContext.current
     // 收集手机号输入
     val phone by viewModel.phone.collectAsState()
@@ -60,6 +60,8 @@ internal fun RegisterRoute(
     val captcha by viewModel.captcha.collectAsState()
     // 收集验证码加载状态
     val isLoadingCaptcha by viewModel.isLoadingCaptcha.collectAsState()
+    // 收集短信验证码发送状态
+    val isSendingCode by viewModel.isSendingCode.collectAsState()
     // 收集手机号验证状态
     val isPhoneValid by viewModel.isPhoneValid.collectAsState(initial = false)
     // 收集注册按钮启用状态
@@ -92,6 +94,7 @@ internal fun RegisterRoute(
         showImageCodePopup = showImageCodePopup,
         captcha = captcha,
         isLoadingCaptcha = isLoadingCaptcha,
+        isSendingCode = isSendingCode,
         isPhoneValid = isPhoneValid,
         isRegisterEnabled = isRegisterEnabled,
         onHideImageCodePopup = viewModel::onHideImageCodePopup,
@@ -102,7 +105,7 @@ internal fun RegisterRoute(
         onSendVerificationCode = onSendVerificationCodeWithPermission,
         onImageCodeConfirm = viewModel::onImageCodeConfirm,
         onRefreshCaptcha = viewModel::getCaptcha,
-        onRegisterClick = viewModel::register
+        onRegisterClick = viewModel::register,
     )
 }
 
@@ -116,6 +119,7 @@ internal fun RegisterRoute(
  * @param showImageCodePopup 图片验证码 Popup
  * @param captcha 图片验证码
  * @param isLoadingCaptcha 验证码加载状态
+ * @param isSendingCode 短信验证码发送状态
  * @param isPhoneValid 手机号是否有效
  * @param isRegisterEnabled 注册按钮是否可用
  * @param onHideImageCodePopup 图片验证码 Popup 隐藏
@@ -139,6 +143,7 @@ internal fun RegisterScreen(
     showImageCodePopup: Boolean = false,
     captcha: Captcha = Captcha(),
     isLoadingCaptcha: Boolean = false,
+    isSendingCode: Boolean = false,
     isPhoneValid: Boolean = false,
     isRegisterEnabled: Boolean = false,
     onHideImageCodePopup: () -> Unit = {},
@@ -149,12 +154,12 @@ internal fun RegisterScreen(
     onSendVerificationCode: () -> Unit = {},
     onImageCodeConfirm: (String) -> Unit = {},
     onRefreshCaptcha: () -> Unit = {},
-    onRegisterClick: () -> Unit = {}
+    onRegisterClick: () -> Unit = {},
 ) {
     AnimatedAuthPage(
         title = stringResource(id = R.string.welcome_register),
         withFadeIn = true,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         RegisterContentView(
             phone = phone,
@@ -162,13 +167,14 @@ internal fun RegisterScreen(
             password = password,
             confirmPassword = confirmPassword,
             isPhoneValid = isPhoneValid,
+            isSendingCode = isLoadingCaptcha || isSendingCode,
             isRegisterEnabled = isRegisterEnabled,
             onPhoneChange = onPhoneChange,
             onVerificationCodeChange = onVerificationCodeChange,
             onPasswordChange = onPasswordChange,
             onConfirmPasswordChange = onConfirmPasswordChange,
             onSendVerificationCode = onSendVerificationCode,
-            onRegisterClick = onRegisterClick
+            onRegisterClick = onRegisterClick,
         )
     }
 
@@ -178,7 +184,8 @@ internal fun RegisterScreen(
         captcha = captcha,
         onDismiss = onHideImageCodePopup,
         onConfirm = onImageCodeConfirm,
-        onRefreshCaptcha = onRefreshCaptcha
+        onRefreshCaptcha = onRefreshCaptcha,
+        isSubmitting = isSendingCode,
     )
 }
 
@@ -190,6 +197,7 @@ internal fun RegisterScreen(
  * @param password 密码
  * @param confirmPassword 确认密码
  * @param isPhoneValid 手机号是否有效
+ * @param isSendingCode 是否正在获取或发送验证码
  * @param isRegisterEnabled 注册按钮是否可用
  * @param onPhoneChange 手机号变更回调
  * @param onVerificationCodeChange 验证码变更回调
@@ -206,6 +214,7 @@ private fun RegisterContentView(
     password: String,
     confirmPassword: String,
     isPhoneValid: Boolean,
+    isSendingCode: Boolean,
     isRegisterEnabled: Boolean,
     onPhoneChange: (String) -> Unit,
     onVerificationCodeChange: (String) -> Unit,
@@ -226,7 +235,7 @@ private fun RegisterContentView(
         onPhoneChange = onPhoneChange,
         phoneFieldFocused = phoneFieldFocused,
         placeholder = stringResource(id = R.string.phone_hint),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -239,7 +248,7 @@ private fun RegisterContentView(
         onSendVerificationCode = onSendVerificationCode,
         placeholder = stringResource(id = R.string.verification_code),
         nextAction = ImeAction.Next,
-        isPhoneValid = isPhoneValid
+        isPhoneValid = isPhoneValid && !isSendingCode,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -250,7 +259,7 @@ private fun RegisterContentView(
         onPasswordChange = onPasswordChange,
         passwordFieldFocused = passwordFieldFocused,
         placeholder = stringResource(id = R.string.set_password),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -261,7 +270,7 @@ private fun RegisterContentView(
         onPasswordChange = onConfirmPasswordChange,
         passwordFieldFocused = confirmPasswordFieldFocused,
         placeholder = stringResource(id = R.string.confirm_password),
-        nextAction = ImeAction.Done
+        nextAction = ImeAction.Done,
     )
 
     SpaceVerticalMedium()
@@ -270,7 +279,7 @@ private fun RegisterContentView(
     UserAgreement(
         prefix = stringResource(id = R.string.register_agreement_prefix),
         onUserAgreementClick = CommonNavigator::toUserAgreement,
-        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy
+        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy,
     )
 
     SpaceVerticalXLarge()
@@ -278,14 +287,14 @@ private fun RegisterContentView(
     AppButton(
         text = stringResource(id = R.string.register),
         onClick = onRegisterClick,
-        enabled = isRegisterEnabled
+        enabled = isRegisterEnabled,
     )
 
     // 使用封装的底部导航组件
     BottomNavigationRow(
         messageText = stringResource(id = R.string.have_account),
         actionText = stringResource(id = R.string.go_login),
-        onActionClick = { navigateBack() }
+        onActionClick = { navigateBack() },
     )
 }
 

@@ -5,19 +5,19 @@ import com.joker.coolmall.core.common.base.viewmodel.BaseViewModel
 import com.joker.coolmall.core.data.repository.AuthRepository
 import com.joker.coolmall.core.data.state.AppState
 import com.joker.coolmall.core.model.entity.Auth
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.util.storage.MMKVUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.core.util.validation.ValidationUtil
 import com.joker.coolmall.feature.auth.R
+import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 账号密码登录ViewModel
@@ -32,7 +32,7 @@ class AccountLoginViewModel @Inject constructor(
 
     companion object {
         private const val KEY_SAVED_PHONE = "saved_phone"
-        private const val KEY_SAVED_PASSWORD = "saved_password"
+        private const val KEY_LEGACY_SAVED_PASSWORD = "saved_password"
     }
 
     /**
@@ -48,8 +48,9 @@ class AccountLoginViewModel @Inject constructor(
     val password: StateFlow<String> = _password
 
     init {
-        // 加载已保存的账号和密码
-        loadSavedCredentials()
+        // 只加载已保存的手机号，并清理历史版本保存的明文密码
+        loadSavedPhone()
+        MMKVUtils.remove(KEY_LEGACY_SAVED_PASSWORD)
     }
 
     /**
@@ -99,13 +100,13 @@ class AccountLoginViewModel @Inject constructor(
 
         val params = mapOf(
             "phone" to account.value,
-            "password" to password.value
+            "password" to password.value,
         )
 
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = authRepository.loginByPassword(params).asResult(),
-            onData = { authData -> loginSuccess(authData) }
+            onData = { authData -> loginSuccess(authData) },
         )
     }
 
@@ -117,8 +118,8 @@ class AccountLoginViewModel @Inject constructor(
      */
     private fun loginSuccess(authData: Auth) {
         viewModelScope.launch {
-            // 保存账号和密码
-            saveCredentials(_account.value, _password.value)
+            // 只保存手机号，不持久化用户原始密码
+            savePhone(_account.value)
 
             ToastUtils.showSuccess(R.string.login_success)
             appState.updateAuth(authData)
@@ -129,31 +130,25 @@ class AccountLoginViewModel @Inject constructor(
     }
 
     /**
-     * 加载已保存的凭据
+     * 加载已保存的手机号
      *
      * @author Joker.X
      */
-    private fun loadSavedCredentials() {
+    private fun loadSavedPhone() {
         val savedPhone = MMKVUtils.getString(KEY_SAVED_PHONE, "")
-        val savedPassword = MMKVUtils.getString(KEY_SAVED_PASSWORD, "")
 
         if (savedPhone.isNotEmpty()) {
             _account.value = savedPhone
         }
-        if (savedPassword.isNotEmpty()) {
-            _password.value = savedPassword
-        }
     }
 
     /**
-     * 保存凭据
+     * 保存手机号
      *
      * @param phone 手机号
-     * @param password 密码
      * @author Joker.X
      */
-    private fun saveCredentials(phone: String, password: String) {
+    private fun savePhone(phone: String) {
         MMKVUtils.putString(KEY_SAVED_PHONE, phone)
-        MMKVUtils.putString(KEY_SAVED_PASSWORD, password)
     }
 }
