@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,6 +17,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
@@ -47,25 +47,25 @@ import com.joker.coolmall.navigation.navigateBack
 internal fun RegisterRoute(viewModel: RegisterViewModel = hiltViewModel()) {
     val context = LocalContext.current
     // 收集手机号输入
-    val phone by viewModel.phone.collectAsState()
+    val phone by viewModel.phone.collectAsStateWithLifecycle()
     // 收集验证码输入
-    val verificationCode by viewModel.verificationCode.collectAsState()
+    val verificationCode by viewModel.verificationCode.collectAsStateWithLifecycle()
     // 收集密码输入
-    val password by viewModel.password.collectAsState()
+    val password by viewModel.password.collectAsStateWithLifecycle()
     // 收集确认密码输入
-    val confirmPassword by viewModel.confirmPassword.collectAsState()
+    val confirmPassword by viewModel.confirmPassword.collectAsStateWithLifecycle()
     // 收集图片验证码弹窗显示状态
-    val showImageCodePopup by viewModel.showImageCodePopup.collectAsState()
+    val showImageCodePopup by viewModel.showImageCodePopup.collectAsStateWithLifecycle()
     // 收集图片验证码数据
-    val captcha by viewModel.captcha.collectAsState()
+    val captcha by viewModel.captcha.collectAsStateWithLifecycle()
     // 收集验证码加载状态
-    val isLoadingCaptcha by viewModel.isLoadingCaptcha.collectAsState()
+    val isLoadingCaptcha by viewModel.isLoadingCaptcha.collectAsStateWithLifecycle()
     // 收集短信验证码发送状态
-    val isSendingCode by viewModel.isSendingCode.collectAsState()
+    val isSendingCode by viewModel.isSendingCode.collectAsStateWithLifecycle()
     // 收集手机号验证状态
-    val isPhoneValid by viewModel.isPhoneValid.collectAsState(initial = false)
+    val isPhoneValid by viewModel.isPhoneValid.collectAsStateWithLifecycle(initialValue = false)
     // 收集注册按钮启用状态
-    val isRegisterEnabled by viewModel.isRegisterEnabled.collectAsState(initial = false)
+    val isRegisterEnabled by viewModel.isRegisterEnabled.collectAsStateWithLifecycle(initialValue = false)
 
     // 包装发送验证码函数，先申请权限再发送
     val onSendVerificationCodeWithPermission = {

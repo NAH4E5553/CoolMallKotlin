@@ -459,7 +459,7 @@ data.subTitle
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
-实施状态：进行中（用户、启动、营销、反馈、通用和商品模块已完成，2026-08-31）。
+实施状态：进行中（用户、启动、营销、反馈、通用、商品和认证模块已完成，2026-08-31）。
 
 审计发现 `feature/` 中存在大量 Route 层 `collectAsState()`。修改时只处理 ViewModel 暴露的 `Flow`/`StateFlow`，不机械改动纯 Compose 局部状态。
 
@@ -525,6 +525,12 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 - `GoodsCategoryRoute` 的分页、分类、筛选、排序和布局状态已统一改为生命周期感知收集。
 - `GoodsDetailRoute` 的详情、规格、动画和优惠券弹窗状态已统一改为生命周期感知收集。
 - Pager、LazyList、`snapshotFlow` 和共享转场等 Compose 局部控制保持原样；ViewModel 内部任务、Repository、导航、模型和资源均未改变。
+
+认证模块实施结果：
+
+- `AccountLoginRoute`、`LoginRoute`、`SmsLoginRoute`、`RegisterRoute` 和 `ResetPasswordRoute` 的 ViewModel 状态已统一改为生命周期感知收集。
+- 手机号与按钮有效性等冷派生 Flow 保留明确初始值，并在页面恢复时根据当前表单状态重新计算。
+- 焦点、动画和 `rememberSaveable` 等 Compose 局部状态保持原样；验证码、QQ 登录、ViewModel、Repository、导航、模型和中英文资源均未改变。
 
 ### 5.4 补充地址表单校验
 
