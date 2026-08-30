@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.launch.view
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -24,7 +26,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -38,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.CenterColumn
 import com.joker.coolmall.core.designsystem.component.CenterRow
 import com.joker.coolmall.core.designsystem.component.FullScreenColumn
@@ -49,7 +51,6 @@ import com.joker.coolmall.core.designsystem.theme.SpacePaddingLarge
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalLarge
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXXLarge
-import com.joker.coolmall.navigation.launch.LaunchRoutes
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.core.ui.component.text.TextSize
@@ -57,6 +58,7 @@ import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.feature.launch.R
 import com.joker.coolmall.feature.launch.model.GuidePageData
 import com.joker.coolmall.feature.launch.viewmodel.GuideViewModel
+import com.joker.coolmall.navigation.launch.LaunchRoutes
 import kotlinx.coroutines.launch
 
 /**
@@ -73,14 +75,14 @@ internal fun GuideRoute(
     viewModel: GuideViewModel = hiltViewModel<GuideViewModel, GuideViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 协程作用域
     val scope = rememberCoroutineScope()
 
     // 从ViewModel获取状态
-    val currentPageIndex by viewModel.currentPageIndex.collectAsState()
+    val currentPageIndex by viewModel.currentPageIndex.collectAsStateWithLifecycle()
 
     GuideScreen(
         guidePages = viewModel.guidePages,
@@ -96,7 +98,7 @@ internal fun GuideRoute(
                 }
             }
         },
-        onSkipClick = viewModel::skipGuide
+        onSkipClick = viewModel::skipGuide,
     )
 }
 
@@ -119,11 +121,11 @@ internal fun GuideScreen(
     isLastPage: Boolean = false,
     onPageChanged: (Int) -> Unit = {},
     onNextClick: (androidx.compose.foundation.pager.PagerState) -> Unit = {},
-    onSkipClick: () -> Unit = {}
+    onSkipClick: () -> Unit = {},
 ) {
     // 创建分页器状态
     val pagerState = rememberPagerState(
-        initialPage = currentPageIndex
+        initialPage = currentPageIndex,
     ) {
         guidePages.size
     }
@@ -137,7 +139,7 @@ internal fun GuideScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { paddingValues ->
         GuideContentView(
             guidePages = guidePages,
@@ -146,7 +148,7 @@ internal fun GuideScreen(
             pagerState = pagerState,
             onNextClick = onNextClick,
             onSkipClick = onSkipClick,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
         )
     }
 }
@@ -171,24 +173,24 @@ private fun GuideContentView(
     pagerState: androidx.compose.foundation.pager.PagerState,
     onNextClick: (androidx.compose.foundation.pager.PagerState) -> Unit,
     onSkipClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     ) {
         // 顶部跳过按钮
         SpaceBetweenRow(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Spacer(modifier = Modifier.width(1.dp))
             TextButton(
                 onClick = onSkipClick,
-                modifier = Modifier.padding(SpacePaddingLarge)
+                modifier = Modifier.padding(SpacePaddingLarge),
             ) {
                 AppText(
                     text = stringResource(R.string.guide_skip),
                     type = TextType.TERTIARY,
-                    size = TextSize.BODY_MEDIUM
+                    size = TextSize.BODY_MEDIUM,
                 )
             }
         }
@@ -197,7 +199,7 @@ private fun GuideContentView(
         FullScreenColumn(
             modifier = Modifier,
             verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SpaceVerticalXXLarge()
             SpaceVerticalLarge()
@@ -205,12 +207,12 @@ private fun GuideContentView(
             // 水平分页器
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) { page ->
                 if (page < guidePages.size) {
                     GuidePageContent(
                         pageData = guidePages[page],
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
@@ -221,25 +223,29 @@ private fun GuideContentView(
             PageIndicator(
                 pageCount = guidePages.size,
                 currentPage = currentPageIndex,
-                modifier = Modifier.padding(vertical = SpaceVerticalLarge)
+                modifier = Modifier.padding(vertical = SpaceVerticalLarge),
             )
 
             // 下一页按钮 - 带宽度变化动画
             val buttonText =
-                if (isLastPage) stringResource(R.string.guide_start_experience) else stringResource(
-                    R.string.guide_continue
-                )
+                if (isLastPage) {
+                    stringResource(R.string.guide_start_experience)
+                } else {
+                    stringResource(
+                        R.string.guide_continue,
+                    )
+                }
             val animatedButtonWidth by animateDpAsState(
                 targetValue = if (isLastPage) 160.dp else 120.dp,
                 animationSpec = tween(300),
-                label = "button_width"
+                label = "button_width",
             )
 
             AppButton(
                 text = buttonText,
                 onClick = { onNextClick(pagerState) },
                 fullWidth = false,
-                modifier = Modifier.width(animatedButtonWidth)
+                modifier = Modifier.width(animatedButtonWidth),
             )
 
             SpaceVerticalXXLarge()
@@ -255,17 +261,13 @@ private fun GuideContentView(
  * @author Joker.X
  */
 @Composable
-private fun GuidePageContent(
-    pageData: GuidePageData,
-    modifier: Modifier = Modifier
-) {
+private fun GuidePageContent(pageData: GuidePageData, modifier: Modifier = Modifier) {
     CenterColumn(modifier = modifier) {
-
         Image(
             painter = painterResource(id = pageData.image),
             contentDescription = "Guide",
             modifier = Modifier
-                .size(240.dp)
+                .size(240.dp),
         )
 
         SpaceVerticalXXLarge()
@@ -275,7 +277,7 @@ private fun GuidePageContent(
             text = pageData.title,
             size = TextSize.DISPLAY_MEDIUM,
             textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
 
         SpaceVerticalXLarge()
@@ -287,7 +289,7 @@ private fun GuidePageContent(
             size = TextSize.BODY_LARGE,
             textAlign = TextAlign.Center,
             lineHeight = 24.sp,
-            modifier = Modifier.padding(horizontal = SpaceHorizontalXXLarge)
+            modifier = Modifier.padding(horizontal = SpaceHorizontalXXLarge),
         )
     }
 }
@@ -301,28 +303,24 @@ private fun GuidePageContent(
  * @author Joker.X
  */
 @Composable
-private fun PageIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier
-) {
+private fun PageIndicator(pageCount: Int, currentPage: Int, modifier: Modifier = Modifier) {
     CenterRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = SpacePaddingLarge),
-        fillMaxWidth = false
+        fillMaxWidth = false,
     ) {
         repeat(pageCount) { index ->
             val isSelected = index == currentPage
             val animatedWidth by animateDpAsState(
                 targetValue = if (isSelected) 24.dp else 8.dp,
                 animationSpec = tween(300),
-                label = "indicator_width"
+                label = "indicator_width",
             )
             val animatedAlpha by animateFloatAsState(
                 targetValue = if (isSelected) 1f else 0.4f,
                 animationSpec = tween(300),
-                label = "indicator_alpha"
+                label = "indicator_alpha",
             )
 
             Box(
@@ -331,8 +329,8 @@ private fun PageIndicator(
                     .height(8.dp)
                     .background(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = animatedAlpha),
-                        shape = RoundedCornerShape(4.dp)
-                    )
+                        shape = RoundedCornerShape(4.dp),
+                    ),
             )
 
             if (index < pageCount - 1) {
@@ -341,7 +339,6 @@ private fun PageIndicator(
         }
     }
 }
-
 
 /**
  * 引导页界面浅色主题预览

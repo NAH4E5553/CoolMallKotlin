@@ -459,7 +459,7 @@ data.subTitle
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
-实施状态：进行中（用户模块已完成，2026-08-31）。
+实施状态：进行中（用户和启动模块已完成，2026-08-31）。
 
 审计发现 `feature/` 中存在大量 Route 层 `collectAsState()`。修改时只处理 ViewModel 暴露的 `Flow`/`StateFlow`，不机械改动纯 Compose 局部状态。
 
@@ -493,6 +493,12 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 - `FootprintRoute` 剩余的 `uiState` 已与足迹列表和数量保持一致，页面停止后不再通过派生状态继续维持 Room 数据流订阅。
 - `ProfileRoute` 和 `AddressDetailRoute` 已符合要求，本批没有重复修改。
 - ViewModel、Repository、导航、资源和公共状态契约保持不变。
+
+启动模块实施结果：
+
+- `GuideRoute` 的当前页索引已改为生命周期感知收集。
+- Pager 局部交互使用的 `snapshotFlow` 保持不变，不将 Compose 局部状态误当作 ViewModel 状态处理。
+- ViewModel、MMKV 引导标记、跳过/完成导航和资源保持不变。
 
 ### 5.4 补充地址表单校验
 
