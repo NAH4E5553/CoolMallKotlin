@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.auth.view
 
 import android.app.Activity
@@ -20,8 +22,6 @@ import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
 import com.joker.coolmall.core.model.entity.Captcha
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.button.ButtonShape
 import com.joker.coolmall.core.util.permission.PermissionUtils
@@ -34,7 +34,8 @@ import com.joker.coolmall.feature.auth.component.PhoneInputField
 import com.joker.coolmall.feature.auth.component.UserAgreement
 import com.joker.coolmall.feature.auth.component.VerificationCodeField
 import com.joker.coolmall.feature.auth.viewmodel.SmsLoginViewModel
-
+import com.joker.coolmall.navigation.common.CommonNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 短信登录路由
@@ -43,9 +44,7 @@ import com.joker.coolmall.feature.auth.viewmodel.SmsLoginViewModel
  * @author Joker.X
  */
 @Composable
-internal fun SmsLoginRoute(
-    viewModel: SmsLoginViewModel = hiltViewModel()
-) {
+internal fun SmsLoginRoute(viewModel: SmsLoginViewModel = hiltViewModel()) {
     val context = LocalContext.current
     // 收集手机号输入
     val phone by viewModel.phone.collectAsState()
@@ -57,6 +56,8 @@ internal fun SmsLoginRoute(
     val captcha by viewModel.captcha.collectAsState()
     // 收集验证码加载状态
     val isLoadingCaptcha by viewModel.isLoadingCaptcha.collectAsState()
+    // 收集短信验证码发送状态
+    val isSendingCode by viewModel.isSendingCode.collectAsState()
     // 收集手机号验证状态
     val isPhoneValid by viewModel.isPhoneValid.collectAsState(initial = false)
     // 收集登录按钮启用状态
@@ -87,6 +88,7 @@ internal fun SmsLoginRoute(
         showImageCodePopup = showImageCodePopup,
         captcha = captcha,
         isLoadingCaptcha = isLoadingCaptcha,
+        isSendingCode = isSendingCode,
         isPhoneValid = isPhoneValid,
         isLoginEnabled = isLoginEnabled,
         onHideImageCodePopup = viewModel::onHideImageCodePopup,
@@ -95,7 +97,7 @@ internal fun SmsLoginRoute(
         onSendVerificationCode = onSendVerificationCodeWithPermission,
         onImageCodeConfirm = viewModel::onImageCodeConfirm,
         onRefreshCaptcha = viewModel::getCaptcha,
-        onLoginClick = viewModel::login
+        onLoginClick = viewModel::login,
     )
 }
 
@@ -107,6 +109,7 @@ internal fun SmsLoginRoute(
  * @param showImageCodePopup 图片验证码 Popup
  * @param captcha 图片验证码
  * @param isLoadingCaptcha 验证码加载状态
+ * @param isSendingCode 短信验证码发送状态
  * @param isPhoneValid 手机号是否有效
  * @param isLoginEnabled 登录按钮是否可用
  * @param onHideImageCodePopup 图片验证码 Popup 隐藏
@@ -126,6 +129,7 @@ internal fun SmsLoginScreen(
     showImageCodePopup: Boolean = false,
     captcha: Captcha = Captcha(),
     isLoadingCaptcha: Boolean = false,
+    isSendingCode: Boolean = false,
     isPhoneValid: Boolean = false,
     isLoginEnabled: Boolean = false,
     onHideImageCodePopup: () -> Unit = {},
@@ -134,21 +138,22 @@ internal fun SmsLoginScreen(
     onSendVerificationCode: () -> Unit = {},
     onImageCodeConfirm: (String) -> Unit = {},
     onRefreshCaptcha: () -> Unit = {},
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
 ) {
     AnimatedAuthPage(
         title = stringResource(id = R.string.welcome_login),
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         SmsLoginContentView(
             phone = phone,
             verificationCode = verificationCode,
             isPhoneValid = isPhoneValid,
+            isSendingCode = isLoadingCaptcha || isSendingCode,
             isLoginEnabled = isLoginEnabled,
             onPhoneChange = onPhoneChange,
             onVerificationCodeChange = onVerificationCodeChange,
             onSendVerificationCode = onSendVerificationCode,
-            onLoginClick = onLoginClick
+            onLoginClick = onLoginClick,
         )
     }
 
@@ -158,7 +163,8 @@ internal fun SmsLoginScreen(
         captcha = captcha,
         onDismiss = onHideImageCodePopup,
         onConfirm = onImageCodeConfirm,
-        onRefreshCaptcha = onRefreshCaptcha
+        onRefreshCaptcha = onRefreshCaptcha,
+        isSubmitting = isSendingCode,
     )
 }
 
@@ -168,6 +174,7 @@ internal fun SmsLoginScreen(
  * @param phone 手机号
  * @param verificationCode 验证码
  * @param isPhoneValid 手机号是否有效
+ * @param isSendingCode 是否正在获取或发送验证码
  * @param isLoginEnabled 登录按钮是否可用
  * @param onPhoneChange 手机号变更回调
  * @param onVerificationCodeChange 验证码变更回调
@@ -180,11 +187,12 @@ private fun SmsLoginContentView(
     phone: String,
     verificationCode: String,
     isPhoneValid: Boolean,
+    isSendingCode: Boolean,
     isLoginEnabled: Boolean,
     onPhoneChange: (String) -> Unit,
     onVerificationCodeChange: (String) -> Unit,
     onSendVerificationCode: () -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
 ) {
     // 记录输入框焦点状态
     val phoneFieldFocused = remember { mutableStateOf(false) }
@@ -196,7 +204,7 @@ private fun SmsLoginContentView(
         onPhoneChange = onPhoneChange,
         phoneFieldFocused = phoneFieldFocused,
         placeholder = stringResource(id = R.string.phone_hint),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(42.dp))
@@ -209,7 +217,7 @@ private fun SmsLoginContentView(
         onSendVerificationCode = onSendVerificationCode,
         placeholder = stringResource(id = R.string.verification_code),
         nextAction = ImeAction.Done,
-        isPhoneValid = isPhoneValid
+        isPhoneValid = isPhoneValid && !isSendingCode,
     )
 
     SpaceVerticalMedium()
@@ -218,7 +226,7 @@ private fun SmsLoginContentView(
     UserAgreement(
         prefix = stringResource(id = R.string.login_agreement_prefix),
         onUserAgreementClick = CommonNavigator::toUserAgreement,
-        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy
+        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy,
     )
 
     SpaceVerticalXLarge()
@@ -227,14 +235,14 @@ private fun SmsLoginContentView(
         text = stringResource(id = R.string.login),
         onClick = onLoginClick,
         shape = ButtonShape.ROUND,
-        enabled = isLoginEnabled
+        enabled = isLoginEnabled,
     )
 
     // 使用封装的底部导航组件
     BottomNavigationRow(
         messageText = stringResource(id = R.string.sms_not_available),
         actionText = stringResource(id = R.string.use_third_party_login),
-        onActionClick = { navigateBack() }
+        onActionClick = { navigateBack() },
     )
 }
 

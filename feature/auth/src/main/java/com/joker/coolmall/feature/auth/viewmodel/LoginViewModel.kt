@@ -9,14 +9,18 @@ import com.joker.coolmall.core.data.repository.AuthRepository
 import com.joker.coolmall.core.data.state.AppState
 import com.joker.coolmall.core.model.entity.Auth
 import com.joker.coolmall.core.model.request.QQLoginRequest
-import com.joker.coolmall.navigation.NavigationService.navigateBack
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.feature.auth.R
+import com.joker.coolmall.navigation.NavigationService.navigateBack
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 /**
  * 登录主页 ViewModel
@@ -24,10 +28,17 @@ import javax.inject.Inject
  * @author Joker.X
  */
 @HiltViewModel
-class LoginViewModel @Inject constructor(
-    private val appState: AppState,
-    private val authRepository: AuthRepository
-) : BaseViewModel() {
+class LoginViewModel @Inject constructor(private val appState: AppState, private val authRepository: AuthRepository) :
+    BaseViewModel() {
+
+    private val qqLoginManager = QQLoginManager.getInstance()
+
+    private val _isQqLoginInProgress = MutableStateFlow(false)
+    val isQqLoginInProgress: StateFlow<Boolean> = _isQqLoginInProgress.asStateFlow()
+
+    init {
+        observeQQLoginResult()
+    }
 
     /**
      * 启动 QQ 登录
@@ -36,39 +47,54 @@ class LoginViewModel @Inject constructor(
      * @author Joker.X
      */
     fun startQQLogin(activity: Activity) {
+        if (_isQqLoginInProgress.value) return
+
+        // StateFlow 会重放当前值，新的登录开始前先丢弃历史结果
+        qqLoginManager.clearLoginResult()
+        if (!_isQqLoginInProgress.compareAndSet(expect = false, update = true)) return
+
         try {
             // 启动 QQ 登录
-            QQLoginManager.getInstance().startQQLogin(activity)
+            qqLoginManager.startQQLogin(activity)
+        } catch (_: Exception) {
+            _isQqLoginInProgress.value = false
+            ToastUtils.showError(R.string.start_qq_login_failed)
+        }
+    }
 
-            // 监听登录结果
-            viewModelScope.launch {
-                QQLoginManager.getInstance().loginResult.collect { result ->
-                    when (result) {
-                        is QQLoginResult.Success -> {
-                            // QQ 登录成功，调用后端登录接口
-                            qqLoginSuccess(result.accessToken, result.openId)
-                            // 清除登录结果
-                            QQLoginManager.getInstance().clearLoginResult()
-                        }
+    /**
+     * 在 ViewModel 生命周期内只订阅一次 QQ 登录结果
+     *
+     * @author Joker.X
+     */
+    private fun observeQQLoginResult() {
+        viewModelScope.launch {
+            qqLoginManager.loginResult.filterNotNull().collect { result ->
+                // 无正在进行的登录时，丢弃单例中遗留的旧结果
+                if (!_isQqLoginInProgress.value) {
+                    qqLoginManager.clearLoginResult()
+                    return@collect
+                }
 
-                        is QQLoginResult.Error -> {
-                            // QQ 登录失败
-                            ToastUtils.showError(R.string.login_failed)
-                            QQLoginManager.getInstance().clearLoginResult()
-                        }
+                // 先清空 StateFlow，防止当前结果被后续订阅者重放
+                qqLoginManager.clearLoginResult()
+                when (result) {
+                    is QQLoginResult.Success -> {
+                        // QQ 授权成功，继续调用后端登录接口
+                        qqLoginSuccess(result.accessToken, result.openId)
+                    }
 
-                        is QQLoginResult.Cancel -> {
-                            // 用户取消登录
-                            ToastUtils.showWarning(R.string.login_cancelled)
-                            QQLoginManager.getInstance().clearLoginResult()
-                        }
+                    is QQLoginResult.Error -> {
+                        _isQqLoginInProgress.value = false
+                        ToastUtils.showError(R.string.login_failed)
+                    }
 
-                        else -> {}
+                    is QQLoginResult.Cancel -> {
+                        _isQqLoginInProgress.value = false
+                        ToastUtils.showWarning(R.string.login_cancelled)
                     }
                 }
             }
-        } catch (_: Exception) {
-            ToastUtils.showError(R.string.start_qq_login_failed)
         }
     }
 
@@ -82,12 +108,13 @@ class LoginViewModel @Inject constructor(
     private fun qqLoginSuccess(accessToken: String, openId: String) {
         val params = QQLoginRequest(
             accessToken = accessToken,
-            openId = openId
+            openId = openId,
         )
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = authRepository.loginByQqApp(params).asResult(),
-            onData = { authData -> loginSuccess(authData) }
+            onData = { authData -> loginSuccess(authData) },
+            onFinally = { _isQqLoginInProgress.value = false },
         )
     }
 
@@ -132,5 +159,4 @@ class LoginViewModel @Inject constructor(
     fun onWechatAndAlipayLoginTipClick() {
         ToastUtils.showWarning(R.string.third_party_login_only_qq)
     }
-
 }

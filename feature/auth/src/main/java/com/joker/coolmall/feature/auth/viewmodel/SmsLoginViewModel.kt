@@ -17,11 +17,13 @@ import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 短信登录ViewModel
@@ -32,12 +34,15 @@ import javax.inject.Inject
 class SmsLoginViewModel @Inject constructor(
     private val appState: AppState,
     private val authRepository: AuthRepository,
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
 ) : BaseViewModel() {
 
     companion object {
         private const val KEY_SAVED_PHONE = "saved_phone"
     }
+
+    private var captchaRequestJob: Job? = null
+    private var captchaRequestId = 0L
 
     /**
      * 手机号输入
@@ -81,9 +86,15 @@ class SmsLoginViewModel @Inject constructor(
     val isLoadingCaptcha: StateFlow<Boolean> = _isLoadingCaptcha
 
     /**
+     * 短信验证码发送状态
+     */
+    private val _isSendingCode = MutableStateFlow(false)
+    val isSendingCode: StateFlow<Boolean> = _isSendingCode
+
+    /**
      * 手机号是否有效
      */
-    val isPhoneValid = _phone.combine(_phone) { phone, _ ->
+    val isPhoneValid = _phone.map { phone ->
         ValidationUtil.isValidPhone(phone)
     }
 
@@ -107,12 +118,7 @@ class SmsLoginViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
-            _isLoadingCaptcha.value = true
-            fetchCaptcha()
-            _isLoadingCaptcha.value = false
-            _showImageCodePopup.value = true
-        }
+        fetchCaptcha(showPopupOnSuccess = true)
     }
 
     /**
@@ -174,25 +180,30 @@ class SmsLoginViewModel @Inject constructor(
      * @author Joker.X
      */
     fun sendVerificationCode() {
+        if (_isSendingCode.value) return
+
         val currentImageCode = imageCode.value
-        onHideImageCodePopup()
 
         val params = mapOf(
             "phone" to phone.value,
             "captchaId" to captcha.value.captchaId,
-            "code" to currentImageCode
+            "code" to currentImageCode,
         )
 
+        _isSendingCode.value = true
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = authRepository.getSmsCode(params).asResult(),
             onData = { smsCode ->
-                // 成功获取验证码，发送通知
                 NotificationUtil.sendVerificationCodeNotification(
                     context = context,
-                    code = smsCode
+                    code = smsCode,
                 )
-            }
+                onHideImageCodePopup()
+            },
+            onFinally = {
+                _isSendingCode.value = false
+            },
         )
     }
 
@@ -215,13 +226,13 @@ class SmsLoginViewModel @Inject constructor(
 
         val params = mapOf(
             "phone" to phone.value,
-            "smsCode" to verificationCode.value
+            "smsCode" to verificationCode.value,
         )
 
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = authRepository.loginByPhone(params).asResult(),
-            onData = { authData -> loginSuccess(authData) }
+            onData = { authData -> loginSuccess(authData) },
         )
     }
 
@@ -273,11 +284,7 @@ class SmsLoginViewModel @Inject constructor(
      * @author Joker.X
      */
     fun getCaptcha() {
-        viewModelScope.launch {
-            _isLoadingCaptcha.value = true
-            fetchCaptcha()
-            _isLoadingCaptcha.value = false
-        }
+        fetchCaptcha(showPopupOnSuccess = false)
     }
 
     /**
@@ -285,14 +292,31 @@ class SmsLoginViewModel @Inject constructor(
      *
      * @author Joker.X
      */
-    private fun fetchCaptcha() {
-        ResultHandler.handleResultWithData(
+    private fun fetchCaptcha(showPopupOnSuccess: Boolean) {
+        val requestId = ++captchaRequestId
+        captchaRequestJob?.cancel()
+        _isLoadingCaptcha.value = true
+        if (showPopupOnSuccess) {
+            _showImageCodePopup.value = false
+        }
+
+        captchaRequestJob = ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = authRepository.getCaptcha().asResult(),
             onData = { captcha ->
-                _captcha.value = captcha
-            }
+                if (requestId == captchaRequestId) {
+                    _captcha.value = captcha
+                    if (showPopupOnSuccess) {
+                        _showImageCodePopup.value = true
+                    }
+                }
+            },
+            onFinally = {
+                if (requestId == captchaRequestId) {
+                    _isLoadingCaptcha.value = false
+                    captchaRequestJob = null
+                }
+            },
         )
     }
-
 }

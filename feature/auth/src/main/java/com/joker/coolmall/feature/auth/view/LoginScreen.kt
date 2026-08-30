@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.auth.view
 
 import android.app.Activity
@@ -22,6 +24,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,9 +44,6 @@ import com.joker.coolmall.core.designsystem.component.SpaceEvenlyRow
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.LogoIcon
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
-import com.joker.coolmall.navigation.auth.AuthNavigator
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.button.ButtonStyle
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
@@ -52,6 +53,9 @@ import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.feature.auth.R
 import com.joker.coolmall.feature.auth.component.UserAgreement
 import com.joker.coolmall.feature.auth.viewmodel.LoginViewModel
+import com.joker.coolmall.navigation.auth.AuthNavigator
+import com.joker.coolmall.navigation.common.CommonNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 登录主页路由
@@ -60,12 +64,12 @@ import com.joker.coolmall.feature.auth.viewmodel.LoginViewModel
  * @author Joker.X
  */
 @Composable
-internal fun LoginRoute(
-    viewModel: LoginViewModel = hiltViewModel()
-) {
+internal fun LoginRoute(viewModel: LoginViewModel = hiltViewModel()) {
     val context = LocalContext.current
+    val isQqLoginInProgress by viewModel.isQqLoginInProgress.collectAsState()
 
     LoginScreen(
+        isQqLoginInProgress = isQqLoginInProgress,
         onWechatLoginClick = viewModel::onWechatLoginClick,
         onAlipayLoginClick = viewModel::onAlipayLoginClick,
         onQQLogin = {
@@ -74,7 +78,7 @@ internal fun LoginRoute(
             if (activity != null) {
                 viewModel.startQQLogin(activity)
             }
-        }
+        },
     )
 }
 
@@ -84,23 +88,26 @@ internal fun LoginRoute(
  * @param onWechatLoginClick 微信登录点击回调
  * @param onAlipayLoginClick 支付宝登录点击回调
  * @param onQQLogin QQ 登录回调
+ * @param isQqLoginInProgress QQ 登录是否正在进行
  * @author Joker.X
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LoginScreen(
+    isQqLoginInProgress: Boolean = false,
     onWechatLoginClick: () -> Unit = {},
     onAlipayLoginClick: () -> Unit = {},
     onQQLogin: () -> Unit = {},
 ) {
     AppScaffold(
         onBackClick = { navigateBack() },
-        backgroundColor = MaterialTheme.colorScheme.surface
+        backgroundColor = MaterialTheme.colorScheme.surface,
     ) {
         LoginContentView(
+            isQqLoginInProgress = isQqLoginInProgress,
             onWechatLoginClick = onWechatLoginClick,
             onAlipayLoginClick = onAlipayLoginClick,
-            onQQLogin = onQQLogin
+            onQQLogin = onQQLogin,
         )
     }
 }
@@ -111,10 +118,12 @@ internal fun LoginScreen(
  * @param onWechatLoginClick 微信登录点击回调
  * @param onAlipayLoginClick 支付宝登录点击回调
  * @param onQQLogin QQ 登录回调
+ * @param isQqLoginInProgress QQ 登录是否正在进行
  * @author Joker.X
  */
 @Composable
 private fun LoginContentView(
+    isQqLoginInProgress: Boolean,
     onWechatLoginClick: () -> Unit,
     onAlipayLoginClick: () -> Unit,
     onQQLogin: () -> Unit,
@@ -144,7 +153,7 @@ private fun LoginContentView(
 
     SpaceBetweenColumn(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // 顶部Logo - 从上到下淡入淡出
         AnimatedVisibility(
@@ -153,15 +162,15 @@ private fun LoginContentView(
                 initialOffsetY = { -it }, // 从上方开始
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            )
+                    stiffness = Spring.StiffnessLow,
+                ),
+            ),
         ) {
             // 包裹Logo在一个有额外padding的容器中，确保弹跳空间
             Box(
                 modifier = Modifier
                     .padding(top = 80.dp, bottom = 30.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 LogoIcon(size = 120.dp)
             }
@@ -174,19 +183,19 @@ private fun LoginContentView(
                 initialOffsetY = { it }, // 从下方开始
                 animationSpec = tween(
                     durationMillis = 500,
-                    delayMillis = 100 // 稍微延迟，让logo先出现
-                )
-            )
+                    delayMillis = 100, // 稍微延迟，让logo先出现
+                ),
+            ),
         ) {
             CenterColumn(
                 modifier = Modifier
                     .padding(24.dp)
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
             ) {
                 // 验证码登录按钮（主按钮）
                 AppButton(
                     text = stringResource(id = R.string.sms_login),
-                    onClick = { AuthNavigator.toSmsLogin() }
+                    onClick = { AuthNavigator.toSmsLogin() },
                 )
 
                 SpaceVerticalXLarge()
@@ -195,7 +204,7 @@ private fun LoginContentView(
                 AppButton(
                     text = stringResource(id = R.string.account_login),
                     onClick = { AuthNavigator.toAccountLogin() },
-                    style = ButtonStyle.OUTLINED
+                    style = ButtonStyle.OUTLINED,
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -203,7 +212,7 @@ private fun LoginContentView(
                 AppText(
                     text = stringResource(id = R.string.other_login_methods),
                     size = TextSize.BODY_MEDIUM,
-                    type = TextType.TERTIARY
+                    type = TextType.TERTIARY,
                 )
 
                 SpaceVerticalXLarge()
@@ -214,21 +223,22 @@ private fun LoginContentView(
                     ThirdPartyLoginButton(
                         icon = com.joker.coolmall.core.ui.R.drawable.ic_wechat,
                         name = stringResource(id = R.string.wechat),
-                        onClick = onWechatLoginClick
+                        onClick = onWechatLoginClick,
                     )
 
                     // QQ登录
                     ThirdPartyLoginButton(
                         icon = com.joker.coolmall.core.ui.R.drawable.ic_qq,
                         name = stringResource(id = R.string.qq),
-                        onClick = onQQLogin
+                        onClick = onQQLogin,
+                        enabled = !isQqLoginInProgress,
                     )
 
                     // 支付宝登录
                     ThirdPartyLoginButton(
                         icon = com.joker.coolmall.core.ui.R.drawable.ic_alipay,
                         name = stringResource(id = R.string.alipay),
-                        onClick = onAlipayLoginClick
+                        onClick = onAlipayLoginClick,
                     )
                 }
 
@@ -237,7 +247,7 @@ private fun LoginContentView(
                     modifier = Modifier.padding(top = 32.dp),
                     centerAlignment = true,
                     onUserAgreementClick = CommonNavigator::toUserAgreement,
-                    onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy
+                    onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy,
                 )
             }
         }
@@ -250,29 +260,31 @@ private fun LoginContentView(
  * @param icon 图标资源ID
  * @param name 名称
  * @param onClick 点击回调
+ * @param enabled 是否允许点击
  * @author Joker.X
  */
 @Composable
-fun ThirdPartyLoginButton(
-    @DrawableRes icon: Int, name: String, onClick: () -> Unit
-) {
+fun ThirdPartyLoginButton(@DrawableRes icon: Int, name: String, onClick: () -> Unit, enabled: Boolean = true) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        IconButton(onClick = onClick) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+        ) {
             Image(
                 painter = painterResource(id = icon),
                 contentDescription = name,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(32.dp),
             )
         }
 
         AppText(
             text = name,
             size = TextSize.BODY_MEDIUM,
-            type = TextType.TERTIARY
+            type = TextType.TERTIARY,
         )
     }
 }

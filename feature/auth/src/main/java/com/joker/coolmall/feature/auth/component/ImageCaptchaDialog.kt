@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.auth.component
 
 import android.graphics.BitmapFactory
@@ -45,6 +47,7 @@ import com.joker.coolmall.feature.auth.R
  * @param onDismiss 取消回调
  * @param onConfirm 确认回调，参数为用户输入的验证码
  * @param onRefreshCaptcha 刷新验证码回调，用户点击图片时触发
+ * @param isSubmitting 是否正在提交验证码
  * @param title 对话框标题，默认使用 R.string.security_verification
  * @param buttonText 按钮文本，默认使用 R.string.complete_verification
  * @author Joker.X
@@ -57,13 +60,14 @@ fun ImageCaptchaDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     onRefreshCaptcha: () -> Unit = {},
+    isSubmitting: Boolean = false,
     title: String = stringResource(id = R.string.security_verification),
-    buttonText: String = stringResource(id = R.string.complete_verification)
+    buttonText: String = stringResource(id = R.string.complete_verification),
 ) {
     BottomModal(
         visible = visible,
         title = title,
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
     ) {
         val imageCodeFieldFocused = remember { mutableStateOf(false) }
         val imageCode = remember { mutableStateOf("") }
@@ -79,23 +83,23 @@ fun ImageCaptchaDialog(
                 },
                 textStyle = TextStyle(
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 singleLine = true,
                 modifier = Modifier
                     .weight(1f)
-                    .onFocusChanged { imageCodeFieldFocused.value = it.isFocused }
+                    .onFocusChanged { imageCodeFieldFocused.value = it.isFocused },
             ) { innerTextField ->
                 Box {
                     if (imageCode.value.isEmpty()) {
                         Text(
                             text = stringResource(id = R.string.image_captcha_hint),
                             color = Color.Gray,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
                         )
                     }
                     innerTextField()
@@ -103,7 +107,7 @@ fun ImageCaptchaDialog(
             }
             CaptchaImage(
                 captcha = captcha,
-                onRefresh = onRefreshCaptcha
+                onRefresh = onRefreshCaptcha,
             )
         }
 
@@ -115,7 +119,8 @@ fun ImageCaptchaDialog(
         AppButton(
             text = buttonText,
             onClick = { onConfirm(imageCode.value) },
-            enabled = imageCode.value.length == 4
+            enabled = imageCode.value.length == 4 && !isSubmitting,
+            loading = isSubmitting,
         )
     }
 }
@@ -129,11 +134,7 @@ fun ImageCaptchaDialog(
  * @author Joker.X
  */
 @Composable
-fun CaptchaImage(
-    modifier: Modifier = Modifier,
-    captcha: Captcha,
-    onRefresh: () -> Unit = {}
-) {
+fun CaptchaImage(modifier: Modifier = Modifier, captcha: Captcha, onRefresh: () -> Unit = {}) {
     // 确保验证码数据不为空
     if (captcha.data.isBlank()) {
         // 显示点击刷新的占位区域
@@ -143,13 +144,13 @@ fun CaptchaImage(
                 .height(40.dp)
                 .width(120.dp)
                 .background(Color.LightGray.copy(alpha = 0.3f))
-                .clickable(onClick = onRefresh)
+                .clickable(onClick = onRefresh),
         ) {
             Text(
                 text = stringResource(id = R.string.refresh_captcha),
                 color = Color.Gray,
                 fontSize = 12.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
         return
@@ -179,13 +180,13 @@ fun CaptchaImage(
                 .height(40.dp)
                 .width(120.dp)
                 .background(Color.LightGray.copy(alpha = 0.3f))
-                .clickable(onClick = onRefresh)
+                .clickable(onClick = onRefresh),
         ) {
             Text(
                 text = stringResource(id = R.string.refresh_captcha),
                 color = Color.Gray,
                 fontSize = 12.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
         return
@@ -207,13 +208,13 @@ fun CaptchaImage(
                 .height(40.dp)
                 .width(120.dp)
                 .background(Color.LightGray.copy(alpha = 0.3f))
-                .clickable(onClick = onRefresh)
+                .clickable(onClick = onRefresh),
         ) {
             Text(
                 text = stringResource(id = R.string.refresh_captcha),
                 color = Color.Gray,
                 fontSize = 12.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
             )
         }
         return
@@ -226,6 +227,6 @@ fun CaptchaImage(
         modifier = modifier
             .height(40.dp)
             .width(120.dp)
-            .clickable(onClick = onRefresh)
+            .clickable(onClick = onRefresh),
     )
-} 
+}
