@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.goods.view
 
 import androidx.compose.foundation.clickable
@@ -12,7 +14,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.VerticalList
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -32,7 +34,6 @@ import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXSmall
 import com.joker.coolmall.core.model.entity.GoodsSearchKeyword
 import com.joker.coolmall.core.model.entity.SearchHistory
 import com.joker.coolmall.core.model.preview.previewGoodsSearchKeywordList
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.appbar.SearchTopAppBar
 import com.joker.coolmall.core.ui.component.list.AppListItem
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkView
@@ -41,6 +42,7 @@ import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.core.ui.component.text.TextSize
 import com.joker.coolmall.feature.goods.R
 import com.joker.coolmall.feature.goods.viewmodel.GoodsSearchViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 商品搜索路由
@@ -49,13 +51,11 @@ import com.joker.coolmall.feature.goods.viewmodel.GoodsSearchViewModel
  * @author Joker.X
  */
 @Composable
-internal fun GoodsSearchRoute(
-    viewModel: GoodsSearchViewModel = hiltViewModel()
-) {
+internal fun GoodsSearchRoute(viewModel: GoodsSearchViewModel = hiltViewModel()) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 搜索历史列表
-    val searchHistoryList by viewModel.searchHistoryList.collectAsState()
+    val searchHistoryList by viewModel.searchHistoryList.collectAsStateWithLifecycle()
 
     GoodsSearchScreen(
         uiState = uiState,
@@ -64,7 +64,7 @@ internal fun GoodsSearchRoute(
         onSearch = viewModel::onSearch,
         onKeywordClick = viewModel::onKeywordClick,
         onSearchHistoryClick = viewModel::onSearchHistoryClick,
-        onClearSearchHistory = viewModel::clearSearchHistory
+        onClearSearchHistory = viewModel::clearSearchHistory,
     )
 }
 
@@ -89,26 +89,26 @@ internal fun GoodsSearchScreen(
     onSearch: (String) -> Unit = {},
     onKeywordClick: (String) -> Unit = {},
     onSearchHistoryClick: (SearchHistory) -> Unit = {},
-    onClearSearchHistory: () -> Unit = {}
+    onClearSearchHistory: () -> Unit = {},
 ) {
     AppScaffold(
         topBar = {
             SearchTopAppBar(
                 onBackClick = { navigateBack() },
-                onSearch = onSearch
+                onSearch = onSearch,
             )
-        }
+        },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { keywordList ->
             GoodsSearchContentView(
                 keywordList = keywordList,
                 searchHistoryList = searchHistoryList,
                 onKeywordClick = onKeywordClick,
                 onSearchHistoryClick = onSearchHistoryClick,
-                onClearSearchHistory = onClearSearchHistory
+                onClearSearchHistory = onClearSearchHistory,
             )
         }
     }
@@ -131,19 +131,18 @@ private fun GoodsSearchContentView(
     searchHistoryList: List<SearchHistory>,
     onKeywordClick: (String) -> Unit,
     onSearchHistoryClick: (SearchHistory) -> Unit,
-    onClearSearchHistory: () -> Unit
+    onClearSearchHistory: () -> Unit,
 ) {
     VerticalList(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
-
         // 搜索历史部分
         if (searchHistoryList.isNotEmpty()) {
             SearchHistorySection(
                 searchHistoryList = searchHistoryList,
                 onSearchHistoryClick = onSearchHistoryClick,
-                onClearSearchHistory = onClearSearchHistory
+                onClearSearchHistory = onClearSearchHistory,
             )
 
             SpaceVerticalXSmall()
@@ -152,7 +151,7 @@ private fun GoodsSearchContentView(
         // 推荐搜索部分
         RecommendSearchSection(
             keywordList = keywordList,
-            onKeywordClick = onKeywordClick
+            onKeywordClick = onKeywordClick,
         )
     }
 }
@@ -170,7 +169,7 @@ private fun GoodsSearchContentView(
 private fun SearchHistorySection(
     searchHistoryList: List<SearchHistory>,
     onSearchHistoryClick: (SearchHistory) -> Unit,
-    onClearSearchHistory: () -> Unit
+    onClearSearchHistory: () -> Unit,
 ) {
     Column {
         AppListItem(
@@ -187,9 +186,9 @@ private fun SearchHistorySection(
                     resId = R.drawable.ic_delete,
                     size = 18.dp,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { onClearSearchHistory() }
+                    modifier = Modifier.clickable { onClearSearchHistory() },
                 )
-            }
+            },
         )
 
         SpaceVerticalSmall()
@@ -197,12 +196,12 @@ private fun SearchHistorySection(
         // 搜索历史标签
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(SpaceHorizontalSmall),
-            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall)
+            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall),
         ) {
             searchHistoryList.forEach { searchHistory ->
                 SearchHistoryTag(
                     text = searchHistory.keyword,
-                    onClick = { onSearchHistoryClick(searchHistory) }
+                    onClick = { onSearchHistoryClick(searchHistory) },
                 )
             }
         }
@@ -218,10 +217,7 @@ private fun SearchHistorySection(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RecommendSearchSection(
-    keywordList: List<GoodsSearchKeyword>,
-    onKeywordClick: (String) -> Unit
-) {
+private fun RecommendSearchSection(keywordList: List<GoodsSearchKeyword>, onKeywordClick: (String) -> Unit) {
     Column {
         AppText(stringResource(R.string.recommended_search), size = TextSize.TITLE_LARGE)
 
@@ -230,12 +226,12 @@ private fun RecommendSearchSection(
         // 推荐关键词标签
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(SpaceHorizontalSmall),
-            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall)
+            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall),
         ) {
             keywordList.forEach { keyword ->
                 SearchHistoryTag(
                     text = keyword.name,
-                    onClick = { onKeywordClick(keyword.name) }
+                    onClick = { onKeywordClick(keyword.name) },
                 )
             }
         }
@@ -250,22 +246,19 @@ private fun RecommendSearchSection(
  * @author Joker.X
  */
 @Composable
-private fun SearchHistoryTag(
-    text: String,
-    onClick: () -> Unit
-) {
+private fun SearchHistoryTag(text: String, onClick: () -> Unit) {
     Card(
         shape = ShapeCircle,
         modifier = Modifier
             .clip(ShapeCircle)
-            .clickable { onClick() }
+            .clickable { onClick() },
     ) {
         AppText(
             text = text,
             modifier = Modifier.padding(
                 horizontal = SpaceHorizontalLarge,
-                vertical = SpaceVerticalSmall
-            )
+                vertical = SpaceVerticalSmall,
+            ),
         )
     }
 }
@@ -281,13 +274,13 @@ internal fun GoodsSearchScreenPreview() {
     AppTheme {
         GoodsSearchScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = previewGoodsSearchKeywordList
+                data = previewGoodsSearchKeywordList,
             ),
             searchHistoryList = listOf(
                 SearchHistory(keyword = "小米手机", searchTime = System.currentTimeMillis()),
                 SearchHistory(keyword = "苹果", searchTime = System.currentTimeMillis()),
-                SearchHistory(keyword = "三星手机", searchTime = System.currentTimeMillis())
-            )
+                SearchHistory(keyword = "三星手机", searchTime = System.currentTimeMillis()),
+            ),
         )
     }
 }
@@ -303,13 +296,13 @@ internal fun GoodsSearchScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         GoodsSearchScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = previewGoodsSearchKeywordList
+                data = previewGoodsSearchKeywordList,
             ),
             searchHistoryList = listOf(
                 SearchHistory(keyword = "小米手机", searchTime = System.currentTimeMillis()),
                 SearchHistory(keyword = "苹果", searchTime = System.currentTimeMillis()),
-                SearchHistory(keyword = "三星手机", searchTime = System.currentTimeMillis())
-            )
+                SearchHistory(keyword = "三星手机", searchTime = System.currentTimeMillis()),
+            ),
         )
     }
 }
