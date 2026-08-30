@@ -1,21 +1,22 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.user.view
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.model.entity.Address
 import com.joker.coolmall.core.model.preview.previewAddressList
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.navigation.user.UserNavigator
 import com.joker.coolmall.core.navigation.user.UserRoutes
 import com.joker.coolmall.core.ui.component.address.AddressActionButton
@@ -27,6 +28,7 @@ import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.user.R
 import com.joker.coolmall.feature.user.viewmodel.AddressListViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 收货地址列表路由
@@ -41,15 +43,15 @@ internal fun AddressListRoute(
     viewModel: AddressListViewModel = hiltViewModel<AddressListViewModel, AddressListViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val listData by viewModel.listData.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
-    val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
-    val deleteId by viewModel.deleteId.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
+    val showDeleteDialog by viewModel.showDeleteDialog.collectAsStateWithLifecycle()
+    val deleteId by viewModel.deleteId.collectAsStateWithLifecycle()
 
     AddressListScreen(
         uiState = uiState,
@@ -62,7 +64,7 @@ internal fun AddressListRoute(
         onRetry = viewModel::retryRequest,
         onDeleteClick = { viewModel.showDeleteDialog(it) },
         isSelectMode = viewModel.isSelectMode,
-        onAddressClick = viewModel::onAddressClick
+        onAddressClick = viewModel::onAddressClick,
     )
 
     // 删除确认对话框
@@ -74,7 +76,7 @@ internal fun AddressListRoute(
             cancelText = stringResource(R.string.cancel),
             onOk = { viewModel.deleteAddress() },
             onCancel = { viewModel.hideDeleteDialog() },
-            onDismiss = { viewModel.hideDeleteDialog() }
+            onDismiss = { viewModel.hideDeleteDialog() },
         )
     }
 }
@@ -108,7 +110,7 @@ internal fun AddressListScreen(
     onRetry: () -> Unit = {},
     onDeleteClick: (Long) -> Unit = {},
     isSelectMode: Boolean = false,
-    onAddressClick: (Address) -> Unit = {}
+    onAddressClick: (Address) -> Unit = {},
 ) {
     AppScaffold(
         title = R.string.address_list_title,
@@ -117,13 +119,14 @@ internal fun AddressListScreen(
             if (uiState != BaseNetWorkListUiState.Loading && uiState != BaseNetWorkListUiState.Error) {
                 AppBottomButton(
                     text = stringResource(id = R.string.address_add_new),
-                    onClick = { UserNavigator.toAddressDetail(isEditMode = false, addressId = 0L) }
+                    onClick = { UserNavigator.toAddressDetail(isEditMode = false, addressId = 0L) },
                 )
             }
-        }) {
+        },
+    ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             AddressListContentView(
                 data = listData,
@@ -134,7 +137,7 @@ internal fun AddressListScreen(
                 shouldTriggerLoadMore = shouldTriggerLoadMore,
                 onDeleteClick = onDeleteClick,
                 isSelectMode = isSelectMode,
-                onAddressClick = onAddressClick
+                onAddressClick = onAddressClick,
             )
         }
     }
@@ -167,7 +170,7 @@ private fun AddressListContentView(
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
     onDeleteClick: (Long) -> Unit,
     isSelectMode: Boolean = false,
-    onAddressClick: (Address) -> Unit = {}
+    onAddressClick: (Address) -> Unit = {},
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
@@ -190,26 +193,26 @@ private fun AddressListContentView(
                 actionSlot = {
                     // 自定义操作区域 - 编辑和删除按钮
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         // 编辑按钮
                         AddressActionButton(
                             onClick = {
                                 UserNavigator.toAddressDetail(
                                     isEditMode = true,
-                                    addressId = data[index].id
+                                    addressId = data[index].id,
                                 )
                             },
-                            iconResId = R.drawable.ic_edit_fill
+                            iconResId = R.drawable.ic_edit_fill,
                         )
 
                         // 删除按钮
                         AddressActionButton(
                             onClick = { onDeleteClick(data[index].id) },
-                            iconResId = R.drawable.ic_delete_fill
+                            iconResId = R.drawable.ic_delete_fill,
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -226,7 +229,7 @@ internal fun AddressListScreenPreview() {
     AppTheme {
         AddressListScreen(
             uiState = BaseNetWorkListUiState.Success,
-            listData = previewAddressList
+            listData = previewAddressList,
         )
     }
 }
@@ -242,7 +245,7 @@ internal fun AddressListScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         AddressListScreen(
             uiState = BaseNetWorkListUiState.Success,
-            listData = previewAddressList
+            listData = previewAddressList,
         )
     }
 }
