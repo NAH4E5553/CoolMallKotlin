@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.auth.view
 
 import androidx.compose.foundation.layout.Spacer
@@ -6,7 +8,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,11 +19,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.StartRow
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.feature.auth.R
 import com.joker.coolmall.feature.auth.component.AnimatedAuthPage
@@ -30,6 +31,7 @@ import com.joker.coolmall.feature.auth.component.PasswordInputField
 import com.joker.coolmall.feature.auth.component.PhoneInputField
 import com.joker.coolmall.feature.auth.component.VerificationCodeField
 import com.joker.coolmall.feature.auth.viewmodel.ResetPasswordViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 找回密码路由
@@ -38,17 +40,15 @@ import com.joker.coolmall.feature.auth.viewmodel.ResetPasswordViewModel
  * @author Joker.X
  */
 @Composable
-internal fun ResetPasswordRoute(
-    viewModel: ResetPasswordViewModel = hiltViewModel()
-) {
+internal fun ResetPasswordRoute(viewModel: ResetPasswordViewModel = hiltViewModel()) {
     // 收集手机号输入
-    val phone by viewModel.phone.collectAsState()
+    val phone by viewModel.phone.collectAsStateWithLifecycle()
     // 收集新密码输入
-    val newPassword by viewModel.newPassword.collectAsState()
+    val newPassword by viewModel.newPassword.collectAsStateWithLifecycle()
     // 收集确认密码输入
-    val confirmPassword by viewModel.confirmPassword.collectAsState()
+    val confirmPassword by viewModel.confirmPassword.collectAsStateWithLifecycle()
     // 收集验证码输入
-    val verificationCode by viewModel.verificationCode.collectAsState()
+    val verificationCode by viewModel.verificationCode.collectAsStateWithLifecycle()
 
     ResetPasswordScreen(
         phone = phone,
@@ -60,7 +60,7 @@ internal fun ResetPasswordRoute(
         onConfirmPasswordChange = viewModel::updateConfirmPassword,
         onVerificationCodeChange = viewModel::updateVerificationCode,
         onSendVerificationCode = viewModel::sendVerificationCode,
-        onResetPasswordClick = viewModel::resetPassword
+        onResetPasswordClick = viewModel::resetPassword,
     )
 }
 
@@ -91,12 +91,12 @@ internal fun ResetPasswordScreen(
     onConfirmPasswordChange: (String) -> Unit = {},
     onVerificationCodeChange: (String) -> Unit = {},
     onSendVerificationCode: () -> Unit = {},
-    onResetPasswordClick: () -> Unit = {}
+    onResetPasswordClick: () -> Unit = {},
 ) {
     AnimatedAuthPage(
         title = stringResource(id = R.string.reset_password),
         withFadeIn = true,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         ResetPasswordContentView(
             phone = phone,
@@ -108,7 +108,7 @@ internal fun ResetPasswordScreen(
             onConfirmPasswordChange = onConfirmPasswordChange,
             onVerificationCodeChange = onVerificationCodeChange,
             onSendVerificationCode = onSendVerificationCode,
-            onResetPasswordClick = onResetPasswordClick
+            onResetPasswordClick = onResetPasswordClick,
         )
     }
 }
@@ -139,7 +139,7 @@ private fun ResetPasswordContentView(
     onConfirmPasswordChange: (String) -> Unit,
     onVerificationCodeChange: (String) -> Unit,
     onSendVerificationCode: () -> Unit,
-    onResetPasswordClick: () -> Unit
+    onResetPasswordClick: () -> Unit,
 ) {
     // 记录输入框焦点状态
     val phoneFieldFocused = remember { mutableStateOf(false) }
@@ -153,7 +153,7 @@ private fun ResetPasswordContentView(
         onPhoneChange = onPhoneChange,
         phoneFieldFocused = phoneFieldFocused,
         placeholder = stringResource(id = R.string.phone_hint),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -165,7 +165,7 @@ private fun ResetPasswordContentView(
         codeFieldFocused = codeFieldFocused,
         onSendVerificationCode = onSendVerificationCode,
         placeholder = stringResource(id = R.string.verification_code),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -176,7 +176,7 @@ private fun ResetPasswordContentView(
         onPasswordChange = onNewPasswordChange,
         passwordFieldFocused = newPasswordFieldFocused,
         placeholder = stringResource(id = R.string.set_new_password),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
@@ -187,7 +187,7 @@ private fun ResetPasswordContentView(
         onPasswordChange = onConfirmPasswordChange,
         passwordFieldFocused = confirmPasswordFieldFocused,
         placeholder = stringResource(id = R.string.confirm_new_password),
-        nextAction = ImeAction.Done
+        nextAction = ImeAction.Done,
     )
 
     SpaceVerticalMedium()
@@ -197,7 +197,7 @@ private fun ResetPasswordContentView(
         Text(
             text = stringResource(id = R.string.reset_password_tip),
             fontSize = 12.sp,
-            color = Color.Gray
+            color = Color.Gray,
         )
     }
 
@@ -207,7 +207,7 @@ private fun ResetPasswordContentView(
         Text(
             text = stringResource(id = R.string.password_mismatch),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
         )
     }
 
@@ -216,7 +216,7 @@ private fun ResetPasswordContentView(
     AppButton(
         text = stringResource(id = R.string.reset_password_button),
         onClick = onResetPasswordClick,
-        enabled = false
+        enabled = false,
     )
 }
 
@@ -231,4 +231,4 @@ fun ResetPasswordScreenPreview() {
     AppTheme {
         ResetPasswordScreen()
     }
-} 
+}

@@ -1,10 +1,11 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.auth.view
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -14,12 +15,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
-import com.joker.coolmall.navigation.auth.AuthNavigator
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.feature.auth.R
 import com.joker.coolmall.feature.auth.component.AnimatedAuthPage
@@ -28,6 +27,9 @@ import com.joker.coolmall.feature.auth.component.PasswordInputField
 import com.joker.coolmall.feature.auth.component.PhoneInputField
 import com.joker.coolmall.feature.auth.component.UserAgreement
 import com.joker.coolmall.feature.auth.viewmodel.AccountLoginViewModel
+import com.joker.coolmall.navigation.auth.AuthNavigator
+import com.joker.coolmall.navigation.common.CommonNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 账号密码登录路由
@@ -36,15 +38,13 @@ import com.joker.coolmall.feature.auth.viewmodel.AccountLoginViewModel
  * @author Joker.X
  */
 @Composable
-internal fun AccountLoginRoute(
-    viewModel: AccountLoginViewModel = hiltViewModel()
-) {
+internal fun AccountLoginRoute(viewModel: AccountLoginViewModel = hiltViewModel()) {
     // 收集账号输入
-    val account by viewModel.account.collectAsState()
+    val account by viewModel.account.collectAsStateWithLifecycle()
     // 收集密码输入
-    val password by viewModel.password.collectAsState()
+    val password by viewModel.password.collectAsStateWithLifecycle()
     // 收集登录按钮启用状态
-    val isLoginEnabled by viewModel.isLoginEnabled.collectAsState(initial = false)
+    val isLoginEnabled by viewModel.isLoginEnabled.collectAsStateWithLifecycle(initialValue = false)
 
     AccountLoginScreen(
         account = account,
@@ -52,7 +52,7 @@ internal fun AccountLoginRoute(
         isLoginEnabled = isLoginEnabled,
         onAccountChange = viewModel::updateAccount,
         onPasswordChange = viewModel::updatePassword,
-        onLoginClick = viewModel::login
+        onLoginClick = viewModel::login,
     )
 }
 
@@ -79,7 +79,7 @@ internal fun AccountLoginScreen(
 ) {
     AnimatedAuthPage(
         title = stringResource(id = R.string.welcome_login),
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         AccountLoginContentView(
             account = account,
@@ -87,7 +87,7 @@ internal fun AccountLoginScreen(
             isLoginEnabled = isLoginEnabled,
             onAccountChange = onAccountChange,
             onPasswordChange = onPasswordChange,
-            onLoginClick = onLoginClick
+            onLoginClick = onLoginClick,
         )
     }
 }
@@ -122,7 +122,7 @@ private fun AccountLoginContentView(
         onPhoneChange = onAccountChange,
         phoneFieldFocused = accountFieldFocused,
         placeholder = stringResource(id = R.string.phone_hint),
-        nextAction = ImeAction.Next
+        nextAction = ImeAction.Next,
     )
 
     Spacer(modifier = Modifier.height(42.dp))
@@ -133,7 +133,7 @@ private fun AccountLoginContentView(
         onPasswordChange = onPasswordChange,
         passwordFieldFocused = passwordFieldFocused,
         placeholder = stringResource(id = R.string.password_hint),
-        nextAction = ImeAction.Done
+        nextAction = ImeAction.Done,
     )
 
     SpaceVerticalMedium()
@@ -142,7 +142,7 @@ private fun AccountLoginContentView(
     UserAgreement(
         prefix = stringResource(id = R.string.login_agreement_prefix),
         onUserAgreementClick = CommonNavigator::toUserAgreement,
-        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy
+        onPrivacyPolicyClick = CommonNavigator::toPrivacyPolicy,
     )
 
     SpaceVerticalXLarge()
@@ -150,7 +150,7 @@ private fun AccountLoginContentView(
     AppButton(
         text = stringResource(id = R.string.login),
         onClick = onLoginClick,
-        enabled = isLoginEnabled
+        enabled = isLoginEnabled,
     )
 
     // 使用封装的底部导航组件 - 分隔符样式
@@ -159,7 +159,7 @@ private fun AccountLoginContentView(
         actionText = stringResource(id = R.string.forgot_password),
         onCancelClick = { AuthNavigator.toRegister() },
         onActionClick = { AuthNavigator.toResetPassword() },
-        divider = true
+        divider = true,
     )
 }
 
