@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.feedback.view
 
@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.VerticalList
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -57,19 +57,19 @@ import com.joker.coolmall.navigation.navigateBack
 @Composable
 internal fun FeedbackSubmitRoute(viewModel: FeedbackSubmitViewModel = hiltViewModel()) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 选中的反馈类型
-    val selectedFeedbackType by viewModel.selectedFeedbackType.collectAsState()
+    val selectedFeedbackType by viewModel.selectedFeedbackType.collectAsStateWithLifecycle()
     // 联系方式
-    val contact by viewModel.contact.collectAsState()
+    val contact by viewModel.contact.collectAsStateWithLifecycle()
     // 反馈内容
-    val content by viewModel.content.collectAsState()
+    val content by viewModel.content.collectAsStateWithLifecycle()
     // 选中的图片
-    val selectedImages by viewModel.selectedImages.collectAsState()
+    val selectedImages by viewModel.selectedImages.collectAsStateWithLifecycle()
     // 已上传的图片URL列表
-    val uploadedImageUrls by viewModel.uploadedImageUrls.collectAsState()
+    val uploadedImageUrls by viewModel.uploadedImageUrls.collectAsStateWithLifecycle()
     // 是否正在提交
-    val isSubmitting by viewModel.isSubmitting.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
 
     FeedbackSubmitScreen(
         uiState = uiState,

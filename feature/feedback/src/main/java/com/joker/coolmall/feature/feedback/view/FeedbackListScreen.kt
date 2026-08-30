@@ -1,18 +1,18 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.feedback.view
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.model.entity.Feedback
-import com.joker.coolmall.navigation.feedback.FeedbackNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.bottombar.AppBottomButton
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkListView
 import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
@@ -20,6 +20,8 @@ import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.feedback.R
 import com.joker.coolmall.feature.feedback.component.FeedbackCard
 import com.joker.coolmall.feature.feedback.viewmodel.FeedbackListViewModel
+import com.joker.coolmall.navigation.feedback.FeedbackNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 反馈列表路由
@@ -28,17 +30,15 @@ import com.joker.coolmall.feature.feedback.viewmodel.FeedbackListViewModel
  * @author Joker.X
  */
 @Composable
-internal fun FeedbackListRoute(
-    viewModel: FeedbackListViewModel = hiltViewModel(),
-) {
+internal fun FeedbackListRoute(viewModel: FeedbackListViewModel = hiltViewModel()) {
     // 反馈列表UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 反馈列表数据
-    val listData by viewModel.listData.collectAsState()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
     // 是否正在刷新
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     // 加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
 
     FeedbackListScreen(
         uiState = uiState,
@@ -49,7 +49,7 @@ internal fun FeedbackListRoute(
         onLoadMore = viewModel::onLoadMore,
         shouldTriggerLoadMore = viewModel::shouldTriggerLoadMore,
         onRetry = viewModel::retryRequest,
-        getFeedbackTypeName = viewModel::getFeedbackTypeName
+        getFeedbackTypeName = viewModel::getFeedbackTypeName,
     )
 }
 
@@ -78,7 +78,7 @@ internal fun FeedbackListScreen(
     onLoadMore: () -> Unit = {},
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean = { _, _ -> false },
     onRetry: () -> Unit = {},
-    getFeedbackTypeName: (Int?) -> String = { it.toString() }
+    getFeedbackTypeName: (Int?) -> String = { it.toString() },
 ) {
     AppScaffold(
         title = R.string.feedback_list,
@@ -87,14 +87,14 @@ internal fun FeedbackListScreen(
             if (uiState != BaseNetWorkListUiState.Loading && uiState != BaseNetWorkListUiState.Error) {
                 AppBottomButton(
                     text = stringResource(R.string.feedback_submit),
-                    onClick = FeedbackNavigator::toSubmit
+                    onClick = FeedbackNavigator::toSubmit,
                 )
             }
-        }
+        },
     ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             FeedbackListContentView(
                 data = listData,
@@ -103,7 +103,7 @@ internal fun FeedbackListScreen(
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
                 shouldTriggerLoadMore = shouldTriggerLoadMore,
-                getFeedbackTypeName = getFeedbackTypeName
+                getFeedbackTypeName = getFeedbackTypeName,
             )
         }
     }
@@ -130,20 +130,20 @@ private fun FeedbackListContentView(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
-    getFeedbackTypeName: (Int?) -> String
+    getFeedbackTypeName: (Int?) -> String,
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
         loadMoreState = loadMoreState,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
-        shouldTriggerLoadMore = shouldTriggerLoadMore
+        shouldTriggerLoadMore = shouldTriggerLoadMore,
     ) {
         // 反馈列表项
         items(data.size) { index ->
             FeedbackCard(
                 feedback = data[index],
-                typeName = getFeedbackTypeName(data[index].type)
+                typeName = getFeedbackTypeName(data[index].type),
             )
         }
     }
@@ -169,9 +169,9 @@ internal fun FeedbackListScreenPreview() {
                     images = null,
                     status = 0,
                     createTime = "2025-08-15 10:30:00",
-                    updateTime = "2025-08-15 10:30:00"
-                )
-            )
+                    updateTime = "2025-08-15 10:30:00",
+                ),
+            ),
         )
     }
 }
@@ -196,9 +196,9 @@ internal fun FeedbackListScreenPreviewDark() {
                     images = null,
                     status = 1,
                     createTime = "2025-08-15 10:30:00",
-                    updateTime = "2025-08-15 10:30:00"
-                )
-            )
+                    updateTime = "2025-08-15 10:30:00",
+                ),
+            ),
         )
     }
 }

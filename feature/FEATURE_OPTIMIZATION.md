@@ -459,7 +459,7 @@ data.subTitle
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
-实施状态：进行中（用户、启动和营销模块已完成，2026-08-31）。
+实施状态：进行中（用户、启动、营销和反馈模块已完成，2026-08-31）。
 
 审计发现 `feature/` 中存在大量 Route 层 `collectAsState()`。修改时只处理 ViewModel 暴露的 `Flow`/`StateFlow`，不机械改动纯 Compose 局部状态。
 
@@ -504,6 +504,12 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
 - `CouponRoute` 的页面状态、优惠券列表、刷新和加载更多状态已统一改为生命周期感知收集。
 - ViewModel 分页状态机、Repository、错误重试、优惠券使用导航和资源保持不变。
+
+反馈模块实施结果：
+
+- `FeedbackListRoute` 的页面状态、列表、刷新和加载更多状态已统一改为生命周期感知收集。
+- `FeedbackSubmitRoute` 的字典页面状态、反馈类型、联系方式、内容、图片和提交状态已统一改为生命周期感知收集。
+- 表单有效性继续使用现有同步派生函数；ViewModel、分页、图片上传、提交防重、Repository、导航和资源保持不变。
 
 ### 5.4 补充地址表单校验
 
