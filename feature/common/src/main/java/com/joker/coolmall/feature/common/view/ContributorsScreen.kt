@@ -1,23 +1,26 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.common.view
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.model.entity.UserContributor
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkListView
 import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.common.R
 import com.joker.coolmall.feature.common.component.UserContributorCard
+import com.joker.coolmall.feature.common.util.openExternalUrl
 import com.joker.coolmall.feature.common.viewmodel.ContributorsViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 贡献者列表路由
@@ -26,9 +29,7 @@ import com.joker.coolmall.feature.common.viewmodel.ContributorsViewModel
  * @author Joker.X
  */
 @Composable
-internal fun ContributorsRoute(
-    viewModel: ContributorsViewModel = hiltViewModel()
-) {
+internal fun ContributorsRoute(viewModel: ContributorsViewModel = hiltViewModel()) {
     // 从ViewModel收集UI状态
     val uiState by viewModel.uiState.collectAsState()
     // 收集列表数据
@@ -46,7 +47,7 @@ internal fun ContributorsRoute(
         onRefresh = viewModel::onRefresh,
         onLoadMore = viewModel::onLoadMore,
         shouldTriggerLoadMore = viewModel::shouldTriggerLoadMore,
-        onRetry = viewModel::retryRequest
+        onRetry = viewModel::retryRequest,
     )
 }
 
@@ -73,15 +74,15 @@ internal fun ContributorsScreen(
     onRefresh: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     shouldTriggerLoadMore: (Int, Int) -> Boolean = { _, _ -> false },
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
 ) {
     AppScaffold(
         title = R.string.contributors_title,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             ContributorsContentView(
                 data = listData,
@@ -89,7 +90,7 @@ internal fun ContributorsScreen(
                 loadMoreState = loadMoreState,
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
-                shouldTriggerLoadMore = shouldTriggerLoadMore
+                shouldTriggerLoadMore = shouldTriggerLoadMore,
             )
         }
     }
@@ -114,14 +115,16 @@ private fun ContributorsContentView(
     loadMoreState: LoadMoreState = LoadMoreState.Success,
     onRefresh: () -> Unit = {},
     onLoadMore: () -> Unit = {},
-    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean = { _, _ -> false }
+    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean = { _, _ -> false },
 ) {
+    val context = LocalContext.current
+
     RefreshLayout(
         isRefreshing = isRefreshing,
         loadMoreState = loadMoreState,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
-        shouldTriggerLoadMore = shouldTriggerLoadMore
+        shouldTriggerLoadMore = shouldTriggerLoadMore,
     ) {
         // 贡献者列表项
         items(data.size) { index ->
@@ -129,9 +132,9 @@ private fun ContributorsContentView(
                 contributor = data[index],
                 onClick = { contributor ->
                     contributor.websiteUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                        CommonNavigator.toWeb(url = url, title = contributor.nickName)
+                        openExternalUrl(context = context, url = url)
                     }
-                }
+                },
             )
         }
     }

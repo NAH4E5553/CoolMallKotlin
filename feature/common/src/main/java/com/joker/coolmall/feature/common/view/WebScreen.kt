@@ -1,14 +1,16 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.common.view
 
-import android.content.Intent
-import android.os.Build
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,22 +24,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.joker.coolmall.core.designsystem.component.FullScreenBox
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.CommonIcon
-import com.joker.coolmall.navigation.common.CommonRoutes
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.common.R
 import com.joker.coolmall.feature.common.model.WebViewData
+import com.joker.coolmall.feature.common.util.SecureWebViewClient
+import com.joker.coolmall.feature.common.util.WebUrlDestination
+import com.joker.coolmall.feature.common.util.WebUrlPolicy
+import com.joker.coolmall.feature.common.util.applySecureDefaults
+import com.joker.coolmall.feature.common.util.openExternalUrl
+import com.joker.coolmall.feature.common.util.releaseFromComposition
 import com.joker.coolmall.feature.common.viewmodel.WebViewModel
+import com.joker.coolmall.navigation.common.CommonRoutes
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 网页路由
@@ -52,7 +61,7 @@ internal fun WebRoute(
     viewModel: WebViewModel = hiltViewModel<WebViewModel, WebViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 收集WebView数据
@@ -76,9 +85,8 @@ internal fun WebRoute(
         onProgressChange = viewModel::updateProgress,
         onRefreshClick = viewModel::refreshPage,
         onResetRefreshState = viewModel::resetRefreshState,
-        onOpenInBrowser = viewModel::openInBrowser,
         onShowDropdownMenu = viewModel::showDropdownMenu,
-        onDismissDropdownMenu = viewModel::dismissDropdownMenu
+        onDismissDropdownMenu = viewModel::dismissDropdownMenu,
     )
 }
 
@@ -94,7 +102,6 @@ internal fun WebRoute(
  * @param onProgressChange 进度变化回调
  * @param onRefreshClick 刷新按钮回调
  * @param onResetRefreshState 重置刷新状态回调
- * @param onOpenInBrowser 用浏览器打开回调
  * @param onShowDropdownMenu 显示下拉菜单回调
  * @param onDismissDropdownMenu 隐藏下拉菜单回调
  * @author Joker.X
@@ -111,12 +118,17 @@ internal fun WebScreen(
     onProgressChange: (Int) -> Unit = {},
     onRefreshClick: () -> Unit = {},
     onResetRefreshState: () -> Unit = {},
-    onOpenInBrowser: () -> Unit = {},
     onShowDropdownMenu: () -> Unit = {},
-    onDismissDropdownMenu: () -> Unit = {}
+    onDismissDropdownMenu: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    val openInBrowser = {
+        openExternalUrl(context = context, url = webViewData.url)
+        onDismissDropdownMenu()
+    }
+
     AppScaffold(
-        titleText = pageTitle,
+        titleText = pageTitle.ifBlank { stringResource(id = R.string.web_title) },
         onBackClick = { navigateBack() },
         topBarActions = {
             WebScreenTopBarActions(
@@ -124,9 +136,9 @@ internal fun WebScreen(
                 onShowDropdownMenu = onShowDropdownMenu,
                 onDismissDropdownMenu = onDismissDropdownMenu,
                 onRefreshClick = onRefreshClick,
-                onOpenInBrowser = onOpenInBrowser
+                onOpenInBrowser = openInBrowser,
             )
-        }
+        },
     ) {
         WebViewContent(
             url = webViewData.url,
@@ -134,7 +146,8 @@ internal fun WebScreen(
             shouldRefresh = shouldRefresh,
             onTitleChange = onTitleChange,
             onProgressChange = onProgressChange,
-            onResetRefreshState = onResetRefreshState
+            onResetRefreshState = onResetRefreshState,
+            onOpenExternal = openInBrowser,
         )
     }
 }
@@ -155,31 +168,31 @@ private fun WebScreenTopBarActions(
     onShowDropdownMenu: () -> Unit,
     onDismissDropdownMenu: () -> Unit,
     onRefreshClick: () -> Unit,
-    onOpenInBrowser: () -> Unit
+    onOpenInBrowser: () -> Unit,
 ) {
     // 溢出菜单按钮
     IconButton(onClick = onShowDropdownMenu) {
         CommonIcon(
             resId = R.drawable.ic_more_vertical,
-            contentDescription = stringResource(id = R.string.web_more_options)
+            contentDescription = stringResource(id = R.string.web_more_options),
         )
     }
 
     // 下拉菜单
     DropdownMenu(
         expanded = showDropdownMenu,
-        onDismissRequest = onDismissDropdownMenu
+        onDismissRequest = onDismissDropdownMenu,
     ) {
         // 刷新选项
         DropdownMenuItem(
             text = { Text(stringResource(id = R.string.web_menu_refresh)) },
-            onClick = onRefreshClick
+            onClick = onRefreshClick,
         )
 
         // 用浏览器打开选项
         DropdownMenuItem(
             text = { Text(stringResource(id = R.string.web_menu_open_browser)) },
-            onClick = onOpenInBrowser
+            onClick = onOpenInBrowser,
         )
     }
 }
@@ -193,6 +206,7 @@ private fun WebScreenTopBarActions(
  * @param onTitleChange 标题变化回调
  * @param onProgressChange 进度变化回调
  * @param onResetRefreshState 重置刷新状态回调
+ * @param onOpenExternal 使用系统应用打开回调
  * @author Joker.X
  */
 @Composable
@@ -202,9 +216,11 @@ private fun WebViewContent(
     shouldRefresh: Boolean,
     onTitleChange: (String) -> Unit,
     onProgressChange: (Int) -> Unit,
-    onResetRefreshState: () -> Unit
+    onResetRefreshState: () -> Unit,
+    onOpenExternal: () -> Unit,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
+    val destination = remember(url) { WebUrlPolicy.classify(url) }
 
     // 处理刷新逻辑
     LaunchedEffect(shouldRefresh) {
@@ -214,81 +230,92 @@ private fun WebViewContent(
         }
     }
 
-    FullScreenBox {
-        AndroidView(
-            factory = { context ->
-                WebView(context).apply {
-                    webView = this
-                    settings.apply {
+    when (destination) {
+        is WebUrlDestination.InApp -> FullScreenBox {
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        webView = this
                         layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
+                            ViewGroup.LayoutParams.MATCH_PARENT,
                         )
-
-                        // 安全设置
-                        javaScriptEnabled = true
-                        loadsImagesAutomatically = true
-                        useWideViewPort = true
-                        loadWithOverviewMode = true
-                        setSupportZoom(true)
-                        builtInZoomControls = true
-                        displayZoomControls = false
-                        setSupportMultipleWindows(false)
-                        javaScriptCanOpenWindowsAutomatically = true
-                        domStorageEnabled = true
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            safeBrowsingEnabled = true
+                        settings.apply {
+                            applySecureDefaults(
+                                javaScriptAllowed = destination.javaScriptEnabled,
+                            )
+                            loadsImagesAutomatically = true
+                            useWideViewPort = true
+                            loadWithOverviewMode = true
+                            setSupportZoom(true)
+                            builtInZoomControls = true
+                            displayZoomControls = false
                         }
-                        mediaPlaybackRequiresUserGesture = false
-                    }
 
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                            // 如果是 HTTP 或 HTTPS 链接，在 WebView 中加载
-                            if (url.startsWith("http://") || url.startsWith("https://")) {
-                                view.loadUrl(url)
-                                return false
-                            } else {
-                                // 对于其他类型的链接（如 tel:, mailto:, geo: 等），使用系统应用打开
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                                    context.startActivity(intent)
-                                    return true
-                                } catch (_: Exception) {
-                                    // 如果无法打开浏览器的情况
-                                    return false
-                                }
+                        webViewClient = SecureWebViewClient(context = context)
+
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onReceivedTitle(view: WebView?, title: String?) {
+                                super.onReceivedTitle(view, title)
+                                title?.let { onTitleChange(it) }
+                            }
+
+                            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                                super.onProgressChanged(view, newProgress)
+                                onProgressChange(newProgress)
                             }
                         }
+
+                        loadUrl(url)
                     }
-
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onReceivedTitle(view: WebView?, title: String?) {
-                            super.onReceivedTitle(view, title)
-                            title?.let { onTitleChange(it) }
-                        }
-
-                        override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                            super.onProgressChanged(view, newProgress)
-                            onProgressChange(newProgress)
-                        }
+                },
+                modifier = Modifier.fillMaxSize(),
+                onRelease = { releasedWebView ->
+                    if (webView === releasedWebView) {
+                        webView = null
                     }
+                    releasedWebView.releaseFromComposition()
+                },
+            )
 
-                    // 加载 URL
-                    loadUrl(url)
-                }
-            },
-            modifier = Modifier.fillMaxSize()
+            if (currentProgress < 100) {
+                LinearProgressIndicator(
+                    progress = { currentProgress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 1.dp),
+                )
+            }
+        }
+
+        WebUrlDestination.External -> WebUrlUnavailable(
+            message = stringResource(id = R.string.web_external_only),
+            onOpenExternal = onOpenExternal,
         )
 
-        // 进度条 - 显示在 WebView 上方
-        if (currentProgress < 100) {
-            LinearProgressIndicator(
-                progress = { currentProgress / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 1.dp)
-            )
+        WebUrlDestination.Blocked -> WebUrlUnavailable(
+            message = stringResource(id = R.string.web_url_blocked),
+        )
+    }
+}
+
+@Composable
+private fun WebUrlUnavailable(message: String, onOpenExternal: (() -> Unit)? = null) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(text = message)
+        if (onOpenExternal != null) {
+            Button(
+                onClick = onOpenExternal,
+                modifier = Modifier.padding(top = 16.dp),
+            ) {
+                Text(text = stringResource(id = R.string.web_menu_open_browser))
+            }
         }
     }
 }
@@ -304,11 +331,11 @@ internal fun WebScreenPreview() {
     AppTheme {
         WebScreen(
             webViewData = WebViewData(
-                url = "https://www.example.com",
-                title = "示例网页"
+                url = "https://github.com/Joker-x-dev/CoolMallKotlin",
+                title = "示例网页",
             ),
             pageTitle = "示例网页",
-            currentProgress = 50
+            currentProgress = 50,
         )
     }
 }
@@ -324,11 +351,11 @@ internal fun WebScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         WebScreen(
             webViewData = WebViewData(
-                url = "https://www.example.com",
-                title = "示例网页"
+                url = "https://github.com/Joker-x-dev/CoolMallKotlin",
+                title = "示例网页",
             ),
             pageTitle = "示例网页",
-            currentProgress = 50
+            currentProgress = 50,
         )
     }
-} 
+}

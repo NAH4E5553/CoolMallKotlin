@@ -429,10 +429,14 @@ data.subTitle
 
 ### 5.2 收紧 WebView 安全设置并释放资源
 
+实施状态：已完成（2026-08-31）。
+
 涉及文件：
 
 - `common/.../view/WebScreen.kt`
 - `common/.../viewmodel/WebViewModel.kt`
+- `common/.../view/PrivacyPolicyScreen.kt`
+- `common/.../view/UserAgreementScreen.kt`
 
 修改方案：
 
@@ -442,6 +446,16 @@ data.subTitle
 - 非 HTTP(S) Scheme 不应不加区分地交给系统。
 - 使用 `AndroidView` 的释放回调执行 `stopLoading()`、清理 client、移除引用并 `destroy()`。
 - 打开外部浏览器失败时使用项目日志和用户可理解的提示，移除 `printStackTrace()`。
+
+实施结果：
+
+- 新增统一的 URL 策略，按解析后的 Scheme、Host、用户信息和端口分类；只有代码中明确列出的 HTTPS Host 可以在应用内加载，未列入许可名单的合法 HTTPS 链接交给系统浏览器。
+- 应用内 WebView 默认关闭 JavaScript 和 DOM Storage，禁止文件、Content URI、混合内容、自动开窗和自动媒体播放；当前没有 Host 获得 JavaScript 权限。
+- HTTP、`javascript:`、`file:`、`content:`、`data:`、`intent:`、异常端口、用户信息伪装和未知 Scheme 会被拦截；系统 Scheme 只允许 `tel:` 和 `mailto:`。
+- 服务端返回的贡献者网址不再进入应用内 WebView，统一交给系统应用处理。
+- 外部打开逻辑移到 UI 层，`WebViewModel` 不再持有 `Context`；打开失败使用项目日志和中英文用户提示。
+- 通用网页、隐私政策和用户协议 WebView 的后续导航共用同一安全策略，并在 `AndroidView.onRelease` 中停止加载、清理 Client、移除子 View 并销毁。
+- 新增纯逻辑测试覆盖许可 Host、伪装域名、用户信息、端口、危险 Scheme、合法外部 HTTPS、电话和邮件链接。
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
