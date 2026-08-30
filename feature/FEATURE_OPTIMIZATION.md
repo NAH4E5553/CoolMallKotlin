@@ -459,6 +459,8 @@ data.subTitle
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
+实施状态：进行中（用户模块已完成，2026-08-31）。
+
 审计发现 `feature/` 中存在大量 Route 层 `collectAsState()`。修改时只处理 ViewModel 暴露的 `Flow`/`StateFlow`，不机械改动纯 Compose 局部状态。
 
 ```kotlin
@@ -484,6 +486,13 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 - 页面停止或保留在返回栈时不再无意义地持续收集。
 - 减少后台请求、重组和资源占用。
 - 为 WebSocket 等有生命周期要求的功能提供一致基础。
+
+用户模块实施结果：
+
+- `AddressListRoute` 的页面状态、列表、刷新、加载更多和删除对话框状态已统一改为生命周期感知收集。
+- `FootprintRoute` 剩余的 `uiState` 已与足迹列表和数量保持一致，页面停止后不再通过派生状态继续维持 Room 数据流订阅。
+- `ProfileRoute` 和 `AddressDetailRoute` 已符合要求，本批没有重复修改。
+- ViewModel、Repository、导航、资源和公共状态契约保持不变。
 
 ### 5.4 补充地址表单校验
 

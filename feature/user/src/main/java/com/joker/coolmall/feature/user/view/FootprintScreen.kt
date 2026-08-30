@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.user.view
 
 import androidx.compose.animation.AnimatedContent
@@ -15,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,8 +27,6 @@ import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpacePaddingMedium
 import com.joker.coolmall.core.model.entity.Footprint
 import com.joker.coolmall.core.model.entity.Goods
-import com.joker.coolmall.navigation.goods.GoodsNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.empty.EmptyData
 import com.joker.coolmall.core.ui.component.goods.GoodsGridItem
 import com.joker.coolmall.core.ui.component.loading.PageLoading
@@ -35,6 +34,8 @@ import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.user.R
 import com.joker.coolmall.feature.user.state.FootprintUiState
 import com.joker.coolmall.feature.user.viewmodel.FootprintViewModel
+import com.joker.coolmall.navigation.goods.GoodsNavigator
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 用户足迹路由
@@ -43,11 +44,9 @@ import com.joker.coolmall.feature.user.viewmodel.FootprintViewModel
  * @author Joker.X
  */
 @Composable
-internal fun FootprintRoute(
-    viewModel: FootprintViewModel = hiltViewModel()
-) {
+internal fun FootprintRoute(viewModel: FootprintViewModel = hiltViewModel()) {
     // 收集页面UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 收集足迹数据
     val footprints by viewModel.footprints.collectAsStateWithLifecycle()
     // 收集足迹总数
@@ -57,7 +56,7 @@ internal fun FootprintRoute(
         uiState = uiState,
         footprints = footprints,
         footprintCount = footprintCount,
-        onClearAll = viewModel::clearAllFootprints
+        onClearAll = viewModel::clearAllFootprints,
     )
 }
 
@@ -76,7 +75,7 @@ internal fun FootprintScreen(
     uiState: FootprintUiState = FootprintUiState.Loading,
     footprints: List<Footprint> = emptyList(),
     footprintCount: Int = 0,
-    onClearAll: () -> Unit = {}
+    onClearAll: () -> Unit = {},
 ) {
     AppScaffold(
         title = R.string.footprint_title,
@@ -86,22 +85,24 @@ internal fun FootprintScreen(
                 TextButton(onClick = onClearAll) {
                     Text(
                         text = stringResource(R.string.clear_with_count, footprintCount),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
-        }
+        },
     ) {
         AnimatedContent(
             targetState = uiState,
             transitionSpec = {
                 fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
-            }
+                    fadeOut(animationSpec = tween(300))
+            },
         ) { state ->
             when (state) {
                 is FootprintUiState.Loading -> PageLoading()
+
                 is FootprintUiState.Empty -> EmptyData()
+
                 is FootprintUiState.Success -> {
                     FootprintContentView(
                         footprints = footprints,
@@ -120,21 +121,18 @@ internal fun FootprintScreen(
  * @author Joker.X
  */
 @Composable
-private fun FootprintContentView(
-    footprints: List<Footprint>,
-    modifier: Modifier = Modifier
-) {
+private fun FootprintContentView(footprints: List<Footprint>, modifier: Modifier = Modifier) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(SpacePaddingMedium),
         horizontalArrangement = Arrangement.spacedBy(SpacePaddingMedium),
-        verticalItemSpacing = SpacePaddingMedium
+        verticalItemSpacing = SpacePaddingMedium,
     ) {
         items(footprints.size) { index ->
             GoodsGridItem(
                 goods = footprints[index].toGoods(),
-                onClick = GoodsNavigator::toDetail
+                onClick = GoodsNavigator::toDetail,
             )
         }
     }
@@ -146,16 +144,14 @@ private fun FootprintContentView(
  * @return Goods对象
  * @author Joker.X
  */
-private fun Footprint.toGoods(): Goods {
-    return Goods(
-        id = this.goodsId,
-        title = this.goodsName,
-        subTitle = this.goodsSubTitle,
-        mainPic = this.goodsMainPic,
-        price = this.goodsPrice,
-        sold = this.goodsSold
-    )
-}
+private fun Footprint.toGoods(): Goods = Goods(
+    id = this.goodsId,
+    title = this.goodsName,
+    subTitle = this.goodsSubTitle,
+    mainPic = this.goodsMainPic,
+    price = this.goodsPrice,
+    sold = this.goodsSold,
+)
 
 /**
  * 我的足迹界面浅色主题预览
