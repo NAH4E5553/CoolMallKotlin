@@ -131,6 +131,9 @@
     <string name="payment_success">Payment successful</string>
     <string name="payment_failed">Payment failed</string>
     <string name="payment_cancel">Payment cancelled</string>
+    <string name="payment_confirmation_pending">Payment confirmation is pending. Check the order details shortly.</string>
     <string name="select_address">Please select a shipping address</string>
+    <string name="order_goods_empty">No checkout items found. Go back and try again.</string>
+    <string name="order_create_failed">Could not create the order. Try again.</string>
+    <string name="cart_cleanup_failed">The order was created, but the cart could not be synced. Refresh it later.</string>
 </resources>
-

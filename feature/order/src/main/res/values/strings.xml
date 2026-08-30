@@ -131,5 +131,9 @@
     <string name="payment_success">支付成功</string>
     <string name="payment_failed">支付失败</string>
     <string name="payment_cancel">支付已取消</string>
+    <string name="payment_confirmation_pending">支付结果确认中，请稍后在订单详情查看</string>
     <string name="select_address">请选择收货地址</string>
+    <string name="order_goods_empty">未获取到待结算商品，请返回后重试</string>
+    <string name="order_create_failed">创建订单失败，请重试</string>
+    <string name="cart_cleanup_failed">订单已创建，但购物车同步失败，请稍后刷新</string>
 </resources>

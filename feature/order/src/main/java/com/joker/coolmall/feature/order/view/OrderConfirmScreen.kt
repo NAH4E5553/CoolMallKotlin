@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.compose.foundation.layout.Column
@@ -15,7 +17,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.FullScreenBox
 import com.joker.coolmall.core.designsystem.component.SpaceBetweenRow
@@ -36,8 +38,8 @@ import com.joker.coolmall.core.model.entity.ConfirmOrder
 import com.joker.coolmall.core.model.entity.Coupon
 import com.joker.coolmall.core.model.preview.previewAddress
 import com.joker.coolmall.core.model.preview.previewCartList
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.navigation.user.UserNavigator
+import com.joker.coolmall.core.ui.R as CoreUiR
 import com.joker.coolmall.core.ui.component.address.AddressCard
 import com.joker.coolmall.core.ui.component.button.AppButtonFixed
 import com.joker.coolmall.core.ui.component.button.ButtonShape
@@ -58,7 +60,7 @@ import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.core.ui.component.title.TitleWithLine
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.viewmodel.OrderConfirmViewModel
-import com.joker.coolmall.core.ui.R as CoreUiR
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 确认订单路由
@@ -67,23 +69,23 @@ import com.joker.coolmall.core.ui.R as CoreUiR
  * @author Joker.X
  */
 @Composable
-internal fun OrderConfirmRoute(
-    viewModel: OrderConfirmViewModel = hiltViewModel(),
-) {
+internal fun OrderConfirmRoute(viewModel: OrderConfirmViewModel = hiltViewModel()) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 订单备注
-    val remark by viewModel.remark.collectAsState()
+    val remark by viewModel.remark.collectAsStateWithLifecycle()
     // 优惠券弹窗显示状态
-    val couponModalVisible by viewModel.couponModalVisible.collectAsState()
+    val couponModalVisible by viewModel.couponModalVisible.collectAsStateWithLifecycle()
     // 选中的优惠券
-    val selectedCoupon by viewModel.selectedCoupon.collectAsState()
+    val selectedCoupon by viewModel.selectedCoupon.collectAsStateWithLifecycle()
     // 原始价格
-    val originalPrice by viewModel.originalPrice.collectAsState()
+    val originalPrice by viewModel.originalPrice.collectAsStateWithLifecycle()
     // 折扣金额
-    val discountAmount by viewModel.discountAmount.collectAsState()
+    val discountAmount by viewModel.discountAmount.collectAsStateWithLifecycle()
     // 总价格
-    val totalPrice by viewModel.totalPrice.collectAsState()
+    val totalPrice by viewModel.totalPrice.collectAsStateWithLifecycle()
+    // 是否正在提交订单
+    val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
 
     OrderConfirmScreen(
         uiState = uiState,
@@ -97,11 +99,11 @@ internal fun OrderConfirmRoute(
         originalPrice = originalPrice,
         discountAmount = discountAmount,
         totalPrice = totalPrice,
+        isSubmitting = isSubmitting,
         onShowCouponModal = viewModel::showCouponModal,
         onHideCouponModal = viewModel::hideCouponModal,
-        onSelectCoupon = viewModel::selectCoupon
+        onSelectCoupon = viewModel::selectCoupon,
     )
-
 }
 
 /**
@@ -137,9 +139,10 @@ internal fun OrderConfirmScreen(
     originalPrice: Double = 0.0,
     discountAmount: Double = 0.0,
     totalPrice: Double = 0.0,
+    isSubmitting: Boolean = false,
     onShowCouponModal: () -> Unit = {},
     onHideCouponModal: () -> Unit = {},
-    onSelectCoupon: (Coupon?) -> Unit = {}
+    onSelectCoupon: (Coupon?) -> Unit = {},
 ) {
     AppScaffold(
         modifier = Modifier
@@ -153,21 +156,22 @@ internal fun OrderConfirmScreen(
             if (uiState is BaseNetWorkUiState.Success) {
                 OrderBottomBar(
                     totalPrice = totalPrice,
-                    onSubmitClick = onSubmitOrderClick
+                    isSubmitting = isSubmitting,
+                    onSubmitClick = onSubmitOrderClick,
                 )
             }
-        }
+        },
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
         ) {
             BaseNetWorkView(
                 uiState = uiState,
                 customLoading = { FullScreenBox { PageLoading() } },
-                customError = { EmptyNetwork(onRetryClick = onRetry) }
+                customError = { EmptyNetwork(onRetryClick = onRetry) },
             ) {
                 OrderConfirmContentView(
                     pageData = it,
@@ -178,7 +182,7 @@ internal fun OrderConfirmScreen(
                     remark = remark,
                     onRemarkChange = onRemarkChange,
                     selectedCoupon = selectedCoupon,
-                    onShowCouponModal = onShowCouponModal
+                    onShowCouponModal = onShowCouponModal,
                 )
             }
         }
@@ -204,7 +208,7 @@ internal fun OrderConfirmScreen(
                     else -> null
                 }
                 onSelectCoupon(coupon)
-            }
+            },
         )
     }
 }
@@ -234,21 +238,21 @@ private fun OrderConfirmContentView(
     remark: String,
     onRemarkChange: (String) -> Unit,
     selectedCoupon: Coupon? = null,
-    onShowCouponModal: () -> Unit = {}
+    onShowCouponModal: () -> Unit = {},
 ) {
     VerticalList {
         // 地址选择卡片
         AddressCard(
             address = pageData.defaultAddress,
             onClick = { UserNavigator.toAddressList(isSelectMode = true) },
-            addressSelected = true
+            addressSelected = true,
         )
 
         // 订单商品卡片
         cartList.forEach { cart ->
             OrderGoodsCard(
                 data = cart,
-                enableQuantityStepper = false
+                enableQuantityStepper = false,
             )
         }
 
@@ -259,7 +263,7 @@ private fun OrderConfirmContentView(
                 showArrow = false,
                 leadingContent = {
                     TitleWithLine(text = stringResource(R.string.price_detail))
-                }
+                },
             )
 
             AppListItem(
@@ -267,13 +271,14 @@ private fun OrderConfirmContentView(
                 leadingIcon = R.drawable.ic_shop,
                 trailingContent = {
                     PriceText(
-                        originalPrice.toInt(), integerTextSize = TextSize.BODY_LARGE,
+                        originalPrice.toInt(),
+                        integerTextSize = TextSize.BODY_LARGE,
                         decimalTextSize = TextSize.BODY_SMALL,
                         symbolTextSize = TextSize.BODY_SMALL,
-                        type = TextType.PRIMARY
+                        type = TextType.PRIMARY,
                     )
                 },
-                showArrow = false
+                showArrow = false,
             )
 
             AppListItem(
@@ -281,7 +286,7 @@ private fun OrderConfirmContentView(
                 leadingIcon = CoreUiR.drawable.ic_coupon,
                 trailingText = selectedCoupon?.title ?: stringResource(R.string.coupon_select),
                 showArrow = true,
-                onClick = onShowCouponModal
+                onClick = onShowCouponModal,
             )
 
             // 显示优惠券折扣（仅当有折扣时显示）
@@ -291,13 +296,14 @@ private fun OrderConfirmContentView(
                     leadingIcon = CoreUiR.drawable.ic_refund,
                     trailingContent = {
                         PriceText(
-                            -discountAmount.toInt(), integerTextSize = TextSize.BODY_LARGE,
+                            -discountAmount.toInt(),
+                            integerTextSize = TextSize.BODY_LARGE,
                             decimalTextSize = TextSize.BODY_SMALL,
                             symbolTextSize = TextSize.BODY_SMALL,
-                            type = TextType.ERROR
+                            type = TextType.ERROR,
                         )
                     },
-                    showArrow = false
+                    showArrow = false,
                 )
             }
 
@@ -306,14 +312,15 @@ private fun OrderConfirmContentView(
                 leadingIcon = R.drawable.ic_money,
                 trailingContent = {
                     PriceText(
-                        totalPrice.toInt(), integerTextSize = TextSize.BODY_LARGE,
+                        totalPrice.toInt(),
+                        integerTextSize = TextSize.BODY_LARGE,
                         decimalTextSize = TextSize.BODY_SMALL,
                         symbolTextSize = TextSize.BODY_SMALL,
-                        type = TextType.PRIMARY
+                        type = TextType.PRIMARY,
                     )
                 },
                 showArrow = false,
-                showDivider = false
+                showDivider = false,
             )
         }
 
@@ -330,10 +337,10 @@ private fun OrderConfirmContentView(
                 shape = ShapeMedium,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 5,
             )
         }
     }
@@ -347,22 +354,17 @@ private fun OrderConfirmContentView(
  * @author Joker.X
  */
 @Composable
-private fun OrderBottomBar(
-    totalPrice: Double,
-    onSubmitClick: () -> Unit
-) {
+private fun OrderBottomBar(totalPrice: Double, isSubmitting: Boolean, onSubmitClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth(),
         shadowElevation = 4.dp,
     ) {
-
         SpaceBetweenRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(SpacePaddingMedium)
+                .padding(SpacePaddingMedium),
         ) {
-
             PriceText(
                 totalPrice.toInt(),
                 integerTextSize = TextSize.DISPLAY_LARGE,
@@ -375,7 +377,9 @@ private fun OrderBottomBar(
                 onClick = onSubmitClick,
                 size = ButtonSize.MINI,
                 style = ButtonStyle.GRADIENT,
-                shape = ButtonShape.SQUARE
+                shape = ButtonShape.SQUARE,
+                enabled = !isSubmitting,
+                loading = isSubmitting,
             )
         }
     }
@@ -394,8 +398,8 @@ internal fun OrderConfirmScreenPreview() {
             uiState = BaseNetWorkUiState.Success(
                 data = ConfirmOrder(
                     defaultAddress = previewAddress,
-                    userCoupon = emptyList()
-                )
+                    userCoupon = emptyList(),
+                ),
             ),
             cartList = previewCartList,
         )
@@ -415,8 +419,8 @@ internal fun OrderConfirmScreenPreviewDark() {
             uiState = BaseNetWorkUiState.Success(
                 data = ConfirmOrder(
                     defaultAddress = previewAddress,
-                    userCoupon = emptyList()
-                )
+                    userCoupon = emptyList(),
+                ),
             ),
             cartList = previewCartList,
         )
