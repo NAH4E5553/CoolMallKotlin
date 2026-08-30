@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.common.view
 
@@ -19,7 +19,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.FullScreenBox
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.CommonIcon
@@ -65,15 +65,15 @@ internal fun WebRoute(
     ),
 ) {
     // 收集WebView数据
-    val webViewData by viewModel.webViewData.collectAsState()
+    val webViewData by viewModel.webViewData.collectAsStateWithLifecycle()
     // 收集页面标题
-    val pageTitle by viewModel.pageTitle.collectAsState()
+    val pageTitle by viewModel.pageTitle.collectAsStateWithLifecycle()
     // 收集当前加载进度
-    val currentProgress by viewModel.currentProgress.collectAsState()
+    val currentProgress by viewModel.currentProgress.collectAsStateWithLifecycle()
     // 收集页面刷新状态
-    val shouldRefresh by viewModel.shouldRefresh.collectAsState()
+    val shouldRefresh by viewModel.shouldRefresh.collectAsStateWithLifecycle()
     // 收集下拉菜单显示状态
-    val showDropdownMenu by viewModel.showDropdownMenu.collectAsState()
+    val showDropdownMenu by viewModel.showDropdownMenu.collectAsStateWithLifecycle()
 
     WebScreen(
         webViewData = webViewData,

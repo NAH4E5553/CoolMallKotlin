@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.common.view
 
 import androidx.compose.animation.core.EaseOutCubic
@@ -33,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.CenterColumn
 import com.joker.coolmall.core.designsystem.component.FullScreenBox
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -71,8 +73,6 @@ import com.joker.coolmall.core.designsystem.theme.SpaceVerticalLarge
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
-import com.joker.coolmall.navigation.common.CommonNavigator
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.list.AppListItem
 import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.core.ui.component.text.TextSize
@@ -82,10 +82,12 @@ import com.joker.coolmall.core.util.`package`.PackageUtils
 import com.joker.coolmall.feature.common.R
 import com.joker.coolmall.feature.common.component.DependencyModal
 import com.joker.coolmall.feature.common.viewmodel.AboutViewModel
-import kotlinx.coroutines.delay
+import com.joker.coolmall.navigation.common.CommonNavigator
+import com.joker.coolmall.navigation.navigateBack
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 /**
  * 关于我们路由
@@ -95,12 +97,9 @@ import kotlin.math.sin
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AboutRoute(
-    viewModel: AboutViewModel = hiltViewModel()
-) {
-
+internal fun AboutRoute(viewModel: AboutViewModel = hiltViewModel()) {
     // 收集依赖弹出层显示状态
-    val showDependencyModal by viewModel.showDependencyModal.collectAsState()
+    val showDependencyModal by viewModel.showDependencyModal.collectAsStateWithLifecycle()
 
     AboutScreen(
         onCitationClick = viewModel::onCitationClick,
@@ -110,7 +109,7 @@ internal fun AboutRoute(
         visible = showDependencyModal,
         dependencies = viewModel.dependencies,
         onDismiss = viewModel::onDismissDependencyModal,
-        onDependencyClick = viewModel::onDependencyClick
+        onDependencyClick = viewModel::onDependencyClick,
     )
 }
 
@@ -122,9 +121,7 @@ internal fun AboutRoute(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AboutScreen(
-    onCitationClick: () -> Unit = {},
-) {
+internal fun AboutScreen(onCitationClick: () -> Unit = {}) {
     val scrollState = rememberScrollState(0)
 
     val scrollFadeThresholdPx = with(LocalDensity.current) { 220.dp.toPx() }
@@ -141,34 +138,34 @@ internal fun AboutScreen(
     val entranceTranslationY by animateDpAsState(
         targetValue = if (isAnimationReady) 0.dp else 30.dp,
         animationSpec = tween(durationMillis = 1000, easing = EaseOutCubic),
-        label = "entrance_translation"
+        label = "entrance_translation",
     )
 
     val entranceAlpha by animateFloatAsState(
         targetValue = if (isAnimationReady) 1f else 0f,
         animationSpec = tween(durationMillis = 800),
-        label = "entrance_alpha"
+        label = "entrance_alpha",
     )
 
     val contentAlpha by animateFloatAsState(
         targetValue = 1f - scrollFraction,
-        label = "content_alpha"
+        label = "content_alpha",
     )
 
     val contentScale by animateFloatAsState(
         targetValue = 1f - scrollFraction * 0.1f, // 缩小10%
-        label = "content_scale"
+        label = "content_scale",
     )
 
     val toolbarAlpha by animateFloatAsState(
         targetValue = scrollFraction,
-        label = "toolbar_alpha"
+        label = "toolbar_alpha",
     )
 
     FullScreenBox(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
     ) {
         // 动态极光背景 (淡出 + 入场动画)
         Box(modifier = Modifier.graphicsLayer(alpha = contentAlpha * entranceAlpha)) {
@@ -182,7 +179,7 @@ internal fun AboutScreen(
                 this.scaleX = contentScale
                 this.scaleY = contentScale
                 this.translationY = entranceTranslationY.toPx()
-            }
+            },
         ) {
             AboutTopSection()
         }
@@ -206,9 +203,9 @@ private fun AnimatedAuroraBackground() {
         targetValue = 2f * PI.toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 15000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "aurora_time"
+        label = "aurora_time",
     )
 
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
@@ -218,10 +215,10 @@ private fun AnimatedAuroraBackground() {
     val (color1, color2, color3, color4) = if (isDarkTheme) {
         // 深色主题颜色
         listOf(
-            Color(0.0f, 0.31f, 0.58f),   // 暗蓝色
-            Color(0.53f, 0.29f, 0.15f),   // 暗橙色/棕色
-            Color(0.46f, 0.06f, 0.27f),   // 洋红色
-            Color(0.16f, 0.12f, 0.45f)    // 靛蓝色
+            Color(0.0f, 0.31f, 0.58f), // 暗蓝色
+            Color(0.53f, 0.29f, 0.15f), // 暗橙色/棕色
+            Color(0.46f, 0.06f, 0.27f), // 洋红色
+            Color(0.16f, 0.12f, 0.45f), // 靛蓝色
         )
     } else {
         // 浅色主题颜色
@@ -229,7 +226,7 @@ private fun AnimatedAuroraBackground() {
             Color(0.57f, 0.76f, 0.98f), // 亮蓝色
             Color(0.98f, 0.85f, 0.68f), // 亮橙色/黄色
             Color(0.98f, 0.75f, 0.93f), // 亮粉色
-            Color(0.73f, 0.7f, 0.98f)  // 亮紫色
+            Color(0.73f, 0.7f, 0.98f), // 亮紫色
         )
     }
     // 第五个光源使用 App 主题色，以突出品牌
@@ -241,7 +238,7 @@ private fun AnimatedAuroraBackground() {
 
     FullScreenBox(
         modifier = Modifier
-            .background(topColor)
+            .background(topColor),
     ) {
         Box(
             modifier = Modifier
@@ -255,82 +252,82 @@ private fun AnimatedAuroraBackground() {
                     val radius1 = width * 0.7f
                     val center1 = Offset(
                         x = width * (0.3f + 0.2f * cos(time)),
-                        y = height * (0.4f + 0.2f * sin(time))
+                        y = height * (0.4f + 0.2f * sin(time)),
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(color1.copy(alpha = 0.9f), Color.Transparent),
                             center = center1,
-                            radius = radius1
+                            radius = radius1,
                         ),
                         radius = radius1,
-                        center = center1
+                        center = center1,
                     )
 
                     // 光源 2
                     val radius2 = width * 0.6f
                     val center2 = Offset(
                         x = width * (0.7f + 0.2f * cos(time * 1.5f + PI.toFloat())),
-                        y = height * (0.6f + 0.15f * sin(time * 1.5f + PI.toFloat()))
+                        y = height * (0.6f + 0.15f * sin(time * 1.5f + PI.toFloat())),
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(color2.copy(alpha = 0.9f), Color.Transparent),
                             center = center2,
-                            radius = radius2
+                            radius = radius2,
                         ),
                         radius = radius2,
-                        center = center2
+                        center = center2,
                     )
 
                     // 光源 3
                     val radius3 = width * 0.8f
                     val center3 = Offset(
                         x = width * (0.6f + 0.2f * cos(time * 0.8f + PI.toFloat() / 2)),
-                        y = height * (0.3f + 0.2f * sin(time * 0.8f + PI.toFloat() / 2))
+                        y = height * (0.3f + 0.2f * sin(time * 0.8f + PI.toFloat() / 2)),
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(color3.copy(alpha = 0.85f), Color.Transparent),
                             center = center3,
-                            radius = radius3
+                            radius = radius3,
                         ),
                         radius = radius3,
-                        center = center3
+                        center = center3,
                     )
 
                     // 光源 4
                     val radius4 = width * 0.5f
                     val center4 = Offset(
                         x = width * (0.2f + 0.1f * cos(time * 1.2f + PI.toFloat() / 4)),
-                        y = height * (0.7f + 0.1f * sin(time * 1.2f + PI.toFloat() / 4))
+                        y = height * (0.7f + 0.1f * sin(time * 1.2f + PI.toFloat() / 4)),
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(color4.copy(alpha = 0.9f), Color.Transparent),
                             center = center4,
-                            radius = radius4
+                            radius = radius4,
                         ),
                         radius = radius4,
-                        center = center4
+                        center = center4,
                     )
 
                     // 光源 5
                     val radius5 = width * 0.7f
                     val center5 = Offset(
                         x = width * (0.8f + 0.15f * cos(time * 0.9f + PI.toFloat() * 1.5f)),
-                        y = height * (0.2f + 0.15f * sin(time * 0.9f + PI.toFloat() * 1.5f))
+                        y = height * (0.2f + 0.15f * sin(time * 0.9f + PI.toFloat() * 1.5f)),
                     )
                     drawCircle(
                         brush = Brush.radialGradient(
                             listOf(color5.copy(alpha = 0.9f), Color.Transparent),
                             center = center5,
-                            radius = radius5
+                            radius = radius5,
                         ),
                         radius = radius5,
-                        center = center5
+                        center = center5,
                     )
-                }
+                },
         )
 
         // 渐变遮罩，用于平滑过渡到页面背景
@@ -341,10 +338,10 @@ private fun AnimatedAuroraBackground() {
                     Brush.verticalGradient(
                         colorStops = arrayOf(
                             0.1f to Color.Transparent,
-                            1.0f to backgroundColor
-                        )
-                    )
-                )
+                            1.0f to backgroundColor,
+                        ),
+                    ),
+                ),
         )
     }
 }
@@ -366,12 +363,12 @@ private fun AboutTopSection() {
             modifier = Modifier.size(120.dp),
             shape = ShapeExtraLarge,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            )
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            ),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 LogoIcon(size = 100.dp)
             }
@@ -383,7 +380,7 @@ private fun AboutTopSection() {
             text = PackageUtils.getCurrentAppName(context),
             size = TextSize.DISPLAY_LARGE,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
         )
 
         SpaceVerticalSmall()
@@ -391,7 +388,7 @@ private fun AboutTopSection() {
         AppText(
             text = "Version ${PackageUtils.getCurrentVersionName(context)}",
             size = TextSize.BODY_MEDIUM,
-            type = TextType.TERTIARY
+            type = TextType.TERTIARY,
         )
     }
 }
@@ -404,16 +401,13 @@ private fun AboutTopSection() {
  * @author Joker.X
  */
 @Composable
-private fun AboutBottomScrollableContent(
-    scrollState: ScrollState,
-    onCitationClick: () -> Unit,
-) {
+private fun AboutBottomScrollableContent(scrollState: ScrollState, onCitationClick: () -> Unit) {
     val context = LocalContext.current
 
     Column(
         modifier = Modifier
             .verticalScroll(state = scrollState)
-            .padding(horizontal = SpacePaddingLarge)
+            .padding(horizontal = SpacePaddingLarge),
     ) {
         // 顶部占位间距，使内容从动态背景下方开始
         Spacer(modifier = Modifier.height(360.dp))
@@ -427,7 +421,7 @@ private fun AboutBottomScrollableContent(
                 showArrow = false,
                 showDivider = true,
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 版本号
             AppListItem(
@@ -436,7 +430,7 @@ private fun AboutBottomScrollableContent(
                 showArrow = false,
                 showDivider = true,
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 版本代码
             AppListItem(
@@ -445,7 +439,7 @@ private fun AboutBottomScrollableContent(
                 showArrow = false,
                 showDivider = false,
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
 
@@ -465,10 +459,10 @@ private fun AboutBottomScrollableContent(
                         contentDescription = stringResource(id = R.string.about_developer_name),
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(CircleShape)
+                            .clip(CircleShape),
                     )
                     Column(
-                        modifier = Modifier.padding(start = SpaceHorizontalMedium)
+                        modifier = Modifier.padding(start = SpaceHorizontalMedium),
                     ) {
                         AppText(
                             text = stringResource(id = R.string.about_developer_name),
@@ -486,7 +480,7 @@ private fun AboutBottomScrollableContent(
                 horizontalPadding = SpaceHorizontalLarge,
                 onClick = {
                     CommonNavigator.toWeb(url = "https://github.com/Joker-x-dev", title = "Joker.X")
-                }
+                },
             )
             // 贡献者
             AppListItem(
@@ -497,7 +491,7 @@ private fun AboutBottomScrollableContent(
                 verticalPadding = SpaceVerticalLarge,
                 onClick = {
                     CommonNavigator.toContributors()
-                }
+                },
             )
         }
 
@@ -520,7 +514,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // Gitee
             AppListItem(
@@ -535,7 +529,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
         SpaceVerticalXLarge()
@@ -554,7 +548,7 @@ private fun AboutBottomScrollableContent(
                     CommonNavigator.toWeb(url = "https://coolmall.apifox.cn", title = "API 文档")
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // Demo 下载
             AppListItem(
@@ -569,7 +563,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 图标来源
             AppListItem(
@@ -581,7 +575,7 @@ private fun AboutBottomScrollableContent(
                     CommonNavigator.toWeb(url = "https://github.com/tuniaoTech", title = "图标来源")
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
         SpaceVerticalXLarge()
@@ -603,7 +597,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // QQ 交流群
             AppListItem(
@@ -613,7 +607,7 @@ private fun AboutBottomScrollableContent(
                 onClick = {
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 微信交流群
             AppListItem(
@@ -623,7 +617,7 @@ private fun AboutBottomScrollableContent(
                 onClick = {
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
         SpaceVerticalXLarge()
@@ -645,7 +639,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 支持
             AppListItem(
@@ -660,7 +654,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 帮助
             AppListItem(
@@ -675,7 +669,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
         SpaceVerticalXLarge()
@@ -694,7 +688,7 @@ private fun AboutBottomScrollableContent(
                     onCitationClick()
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 用户协议
             AppListItem(
@@ -705,7 +699,7 @@ private fun AboutBottomScrollableContent(
                     CommonNavigator.toUserAgreement()
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 隐私政策
             AppListItem(
@@ -716,7 +710,7 @@ private fun AboutBottomScrollableContent(
                     CommonNavigator.toPrivacyPolicy()
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
             // 开源许可
             AppListItem(
@@ -730,7 +724,7 @@ private fun AboutBottomScrollableContent(
                     )
                 },
                 horizontalPadding = SpaceHorizontalLarge,
-                verticalPadding = SpaceVerticalLarge
+                verticalPadding = SpaceVerticalLarge,
             )
         }
         SpaceVerticalXLarge()
@@ -742,7 +736,7 @@ private fun AboutBottomScrollableContent(
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = SpacePaddingLarge)
+                .padding(bottom = SpacePaddingLarge),
         )
     }
 }
@@ -755,9 +749,7 @@ private fun AboutBottomScrollableContent(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AboutAnimatedToolBar(
-    toolbarAlpha: Float
-) {
+private fun AboutAnimatedToolBar(toolbarAlpha: Float) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     CenterAlignedTopAppBar(
@@ -765,7 +757,7 @@ private fun AboutAnimatedToolBar(
             Text(
                 text = stringResource(id = R.string.about_title),
                 modifier = Modifier.alpha(toolbarAlpha),
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         },
         navigationIcon = {
@@ -775,12 +767,12 @@ private fun AboutAnimatedToolBar(
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background.copy(
-                alpha = toolbarAlpha
+                alpha = toolbarAlpha,
             ),
             navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
             titleContentColor = MaterialTheme.colorScheme.onBackground,
         ),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
 

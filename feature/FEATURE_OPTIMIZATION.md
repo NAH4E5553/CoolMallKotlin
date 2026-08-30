@@ -459,7 +459,7 @@ data.subTitle
 
 ### 5.3 Route 层使用生命周期感知的状态收集
 
-实施状态：进行中（用户、启动、营销和反馈模块已完成，2026-08-31）。
+实施状态：进行中（用户、启动、营销、反馈和通用模块已完成，2026-08-31）。
 
 审计发现 `feature/` 中存在大量 Route 层 `collectAsState()`。修改时只处理 ViewModel 暴露的 `Flow`/`StateFlow`，不机械改动纯 Compose 局部状态。
 
@@ -510,6 +510,13 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 - `FeedbackListRoute` 的页面状态、列表、刷新和加载更多状态已统一改为生命周期感知收集。
 - `FeedbackSubmitRoute` 的字典页面状态、反馈类型、联系方式、内容、图片和提交状态已统一改为生命周期感知收集。
 - 表单有效性继续使用现有同步派生函数；ViewModel、分页、图片上传、提交防重、Repository、导航和资源保持不变。
+
+通用模块实施结果：
+
+- `AboutRoute` 的依赖致谢弹窗状态已改为生命周期感知收集。
+- `ContributorsRoute` 的页面状态、列表、刷新和加载更多状态已统一改为生命周期感知收集。
+- 隐私政策、用户协议和 Web Route 的 ViewModel 状态已统一改为生命周期感知收集；设置页原有实现保持不变。
+- Compose 局部动画、滚动、WebView 引用与刷新 Effect 保持原样；ViewModel、Repository、WebView 安全策略、导航、模型和资源均未改变。
 
 ### 5.4 补充地址表单校验
 

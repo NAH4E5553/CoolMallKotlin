@@ -1,14 +1,14 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.common.view
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -31,13 +31,13 @@ import com.joker.coolmall.navigation.navigateBack
 @Composable
 internal fun ContributorsRoute(viewModel: ContributorsViewModel = hiltViewModel()) {
     // 从ViewModel收集UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 收集列表数据
-    val listData by viewModel.listData.collectAsState()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
     // 收集刷新状态
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     // 收集加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
 
     ContributorsScreen(
         uiState = uiState,

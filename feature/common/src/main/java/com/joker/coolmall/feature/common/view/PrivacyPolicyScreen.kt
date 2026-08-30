@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.common.view
 
@@ -7,12 +7,12 @@ import android.webkit.WebView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkView
@@ -33,7 +33,7 @@ import com.joker.coolmall.navigation.navigateBack
 @Composable
 internal fun PrivacyPolicyRoute(viewModel: PrivacyPolicyViewModel = hiltViewModel()) {
     // 从ViewModel收集UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     PrivacyPolicyScreen(
         uiState = uiState,
