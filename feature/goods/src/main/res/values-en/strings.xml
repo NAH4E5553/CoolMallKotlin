@@ -6,7 +6,9 @@
 
     <!-- Product detail page -->
     <string name="sold_count">Sold %d</string>
-    <string name="coupon_text">%d off when you spend %d</string>
+    <string name="coupon_text">Save %2$d when you spend %1$d</string>
+    <string name="coupon_no_threshold_text">Save %d with no minimum</string>
+    <string name="goods_content_empty">No product details available</string>
     <string name="spec">Specification</string>
     <string name="selected_spec">Selected: %s</string>
     <string name="select_spec">Select Spec</string>
@@ -48,4 +50,3 @@
     <string name="spec_colon">Spec: %s</string>
     <string name="view_images">View Images</string>
 </resources>
-

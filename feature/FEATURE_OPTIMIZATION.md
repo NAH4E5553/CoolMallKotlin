@@ -17,7 +17,7 @@
 - `feature/order`
 - `feature/user`
 
-所有模块的 `build/` 目录均已排除。第一批中的 3.1～3.3 已实施，其余条目仍为待实施方案。
+所有模块的 `build/` 目录均已排除。第一批中的 3.1～3.3、第二批中的 4.1～4.4 已实施，其余条目仍为待实施方案。
 
 ## 2. 总体处理原则
 
@@ -261,6 +261,8 @@ Validate request
 
 ### 4.4 清理可空字段的强制非空调用
 
+实施状态：已完成（2026-08-30）。
+
 涉及位置主要包括：
 
 - 商品轮播图 `pics!!`
@@ -331,6 +333,57 @@ _cancelReasonsModalUiState.value = when {
 - 网络请求本身失败：进入 `Error` 并提供重试。
 
 注：如果当前 `BaseNetWorkUiState` 没有 `Empty` 类型，需要先补齐对应状态或为弹窗定义专用状态，不能用 `Success(emptyList())` 混淆语义。
+
+#### 实施结果
+
+公共页面状态已增加独立空态，`BaseNetWorkView` 和字典弹窗会分别渲染通用空数据与“暂无可选项”，不会再把空集合交给成功内容继续执行：
+
+```kotlin
+data object Empty : BaseNetWorkUiState<Nothing>()
+
+when (state) {
+    is BaseNetWorkUiState.Loading -> PageLoading()
+    is BaseNetWorkUiState.Empty -> EmptyData(onRetryClick = onRetry)
+    is BaseNetWorkUiState.Error -> EmptyNetwork(onRetryClick = onRetry)
+    is BaseNetWorkUiState.Success -> content(state.data)
+}
+```
+
+订单取消原因、退款原因统一使用明确映射，并在重新请求时清除旧选中项，避免异常或空响应后仍能提交旧原因：
+
+```kotlin
+internal fun <T> requiredDictionaryUiState(
+    items: List<T>?,
+): BaseNetWorkUiState<List<T>> = when {
+    items == null -> BaseNetWorkUiState.Error()
+    items.isEmpty() -> BaseNetWorkUiState.Empty
+    else -> BaseNetWorkUiState.Success(items)
+}
+```
+
+反馈类型采用相同规则：字段缺失进入 `Error`，成功空集合进入 `Empty`，两种状态都不会显示提交按钮；空态和错误态均提供重试入口。
+
+商品详情的实际处理如下：
+
+- 轮播图过滤空 URL；`pics` 缺失或为空时回退 `mainPic`；两者都不可用时展示图片占位。
+- `contentPics` 缺失、为空或只有空 URL 时显示“暂无图文详情”。
+- `subTitle` 为 `null`、空串或空白串时不渲染文本及额外间距。
+- 优惠券 `condition` 缺失时显示“无门槛减 N 元”，不再强制解包；英文满减文案同时修正了金额参数顺序。
+
+```kotlin
+val bannerImages = pics
+    .orEmpty()
+    .filter(String::isNotBlank)
+    .ifEmpty { listOfNotNull(mainPic.takeIf(String::isNotBlank)) }
+
+data.subTitle
+    ?.takeIf(String::isNotBlank)
+    ?.let { subTitle -> Text(text = subTitle) }
+```
+
+订单详情和物流页不再使用 `address!!`。地址缺失时复用地址卡片展示“该订单暂无收货地址信息”，隐藏操作箭头并禁用点击；订单确认页仍保留“选择/添加地址”的原有交互语义，没有用空 `Address()` 伪造真实数据。
+
+新增纯逻辑测试覆盖：商品图片回退与空 URL、优惠券有/无条件、订单字典 `null/empty/non-empty`、反馈类型 `null/empty/non-empty`。
 
 ## 5. 第三批：客服、WebView 和通用状态收集
 

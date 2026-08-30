@@ -5,6 +5,8 @@
     <string name="empty_cart_btn">Go Shopping</string>
     <string name="empty_data">No Data</string>
     <string name="empty_data_subtitle">No content available</string>
+    <string name="empty_options">No options available</string>
+    <string name="empty_options_subtitle">Please try again later</string>
     <string name="empty_error">Load Failed</string>
     <string name="empty_error_subtitle">Something went wrong</string>
     <string name="empty_network">Network Error</string>
@@ -92,4 +94,3 @@
     <string name="price">Price</string>
     <string name="quantity">Quantity</string>
 </resources>
-

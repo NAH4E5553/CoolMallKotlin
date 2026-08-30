@@ -13,12 +13,12 @@ import com.joker.coolmall.core.model.request.CancelOrderRequest
 import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.response.NetworkResponse
 import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.order.OrderChangedResultKey
-import com.joker.coolmall.navigation.order.PaymentCompletedResultKey
 import com.joker.coolmall.navigation.goods.GoodsRoutes
 import com.joker.coolmall.navigation.navigate
 import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderChangedResultKey
 import com.joker.coolmall.navigation.order.OrderRoutes
+import com.joker.coolmall.navigation.order.PaymentCompletedResultKey
 import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.result.ResultHandler
@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 class OrderDetailViewModel @AssistedInject constructor(
     @Assisted navKey: OrderRoutes.Detail,
     private val orderRepository: OrderRepository,
-    private val commonRepository: CommonRepository
+    private val commonRepository: CommonRepository,
 ) : BaseNetWorkViewModel<Order>() {
     /**
      * 刷新结果监听任务
@@ -111,9 +111,7 @@ class OrderDetailViewModel @AssistedInject constructor(
      *
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<Order>> {
-        return orderRepository.getOrderInfo(requiredOrderId)
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<Order>> = orderRepository.getOrderInfo(requiredOrderId)
 
     /**
      * 处理请求成功的逻辑
@@ -168,7 +166,7 @@ class OrderDetailViewModel @AssistedInject constructor(
                 shouldRefreshListOnBack = true
                 // 隐藏弹窗
                 hideConfirmReceiveDialog()
-            }
+            },
         )
     }
 
@@ -206,18 +204,22 @@ class OrderDetailViewModel @AssistedInject constructor(
             scope = viewModelScope,
             flow = commonRepository.getDictData(
                 DictDataRequest(
-                    types = listOf("orderCancelReason")
-                )
+                    types = listOf("orderCancelReason"),
+                ),
             ).asResult(),
             showToast = false,
-            onLoading = { _cancelReasonsModalUiState.value = BaseNetWorkUiState.Loading },
+            onLoading = {
+                _selectedCancelReason.value = null
+                _cancelReasonsModalUiState.value = BaseNetWorkUiState.Loading
+            },
             onData = { data ->
-                _cancelReasonsModalUiState.value =
-                    BaseNetWorkUiState.Success(data.orderCancelReason!!)
+                _selectedCancelReason.value = null
+                _cancelReasonsModalUiState.value = requiredDictionaryUiState(data.orderCancelReason)
             },
             onError = { _, _ ->
+                _selectedCancelReason.value = null
                 _cancelReasonsModalUiState.value = BaseNetWorkUiState.Error()
-            }
+            },
         )
     }
 
@@ -259,15 +261,15 @@ class OrderDetailViewModel @AssistedInject constructor(
             flow = orderRepository.cancelOrder(
                 CancelOrderRequest(
                     orderId = requiredOrderId,
-                    remark = _selectedCancelReason.value?.name ?: ""
-                )
+                    remark = _selectedCancelReason.value?.name ?: "",
+                ),
             ).asResult(),
             onData = { _ ->
                 // 刷新订单详情
                 retryRequest()
                 // 标记需要在返回时刷新列表
                 shouldRefreshListOnBack = true
-            }
+            },
         )
     }
 
@@ -446,46 +448,44 @@ class OrderDetailViewModel @AssistedInject constructor(
      * 将Order中的goodsList转换为Cart类型的列表
      * 参考OrderConfirmViewModel中的处理方法
      */
-    private fun convertOrderGoodsToCart(order: Order): List<Cart> {
-        return order.goodsList?.let { goodsList ->
-            // 按商品ID分组
-            val groupedGoods = goodsList.groupBy { it.goodsId }
+    private fun convertOrderGoodsToCart(order: Order): List<Cart> = order.goodsList?.let { goodsList ->
+        // 按商品ID分组
+        val groupedGoods = goodsList.groupBy { it.goodsId }
 
-            // 为每个商品ID创建一个Cart对象
-            groupedGoods.map { (goodsId, items) ->
-                val firstItem = items.first()
+        // 为每个商品ID创建一个Cart对象
+        groupedGoods.map { (goodsId, items) ->
+            val firstItem = items.first()
 
-                Cart().apply {
-                    this.goodsId = goodsId
-                    this.goodsName = firstItem.goodsInfo?.title ?: ""
-                    this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
+            Cart().apply {
+                this.goodsId = goodsId
+                this.goodsName = firstItem.goodsInfo?.title ?: ""
+                this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
 
-                    // 收集该商品的所有规格
-                    val allSpecs = mutableListOf<CartGoodsSpec>()
+                // 收集该商品的所有规格
+                val allSpecs = mutableListOf<CartGoodsSpec>()
 
-                    // 遍历该商品的所有选中项
-                    items.forEach { orderGoods ->
-                        // 如果有规格信息，转换为CartGoodsSpec并添加
-                        orderGoods.spec?.let { spec ->
-                            val cartSpec = CartGoodsSpec(
-                                id = spec.id,
-                                goodsId = spec.goodsId,
-                                name = spec.name,
-                                price = spec.price,
-                                stock = spec.stock,
-                                count = orderGoods.count,
-                                images = spec.images
-                            )
-                            allSpecs.add(cartSpec)
-                        }
+                // 遍历该商品的所有选中项
+                items.forEach { orderGoods ->
+                    // 如果有规格信息，转换为CartGoodsSpec并添加
+                    orderGoods.spec?.let { spec ->
+                        val cartSpec = CartGoodsSpec(
+                            id = spec.id,
+                            goodsId = spec.goodsId,
+                            name = spec.name,
+                            price = spec.price,
+                            stock = spec.stock,
+                            count = orderGoods.count,
+                            images = spec.images,
+                        )
+                        allSpecs.add(cartSpec)
                     }
-
-                    // 设置规格列表
-                    this.spec = allSpecs
                 }
+
+                // 设置规格列表
+                this.spec = allSpecs
             }
-        } ?: emptyList()
-    }
+        }
+    } ?: emptyList()
 
     /**
      * Assisted Factory

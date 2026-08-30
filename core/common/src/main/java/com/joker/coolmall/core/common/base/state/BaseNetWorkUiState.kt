@@ -14,6 +14,11 @@ sealed class BaseNetWorkUiState<out T> {
     data object Loading : BaseNetWorkUiState<Nothing>()
 
     /**
+     * 请求成功但没有可展示数据
+     */
+    data object Empty : BaseNetWorkUiState<Nothing>()
+
+    /**
      * 成功状态
      *
      * @param data 成功返回的数据

@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class OrderRefundViewModel @AssistedInject constructor(
     @Assisted navKey: OrderRoutes.Refund,
     private val orderRepository: OrderRepository,
-    private val commonRepository: CommonRepository
+    private val commonRepository: CommonRepository,
 ) : BaseNetWorkViewModel<Order>() {
     // 从路由获取订单ID
     private val requiredOrderId: Long = navKey.orderId
@@ -80,9 +80,7 @@ class OrderRefundViewModel @AssistedInject constructor(
      * @return 订单网络响应流
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<Order>> {
-        return orderRepository.getOrderInfo(requiredOrderId)
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<Order>> = orderRepository.getOrderInfo(requiredOrderId)
 
     /**
      * 处理请求成功的逻辑
@@ -148,18 +146,22 @@ class OrderRefundViewModel @AssistedInject constructor(
             scope = viewModelScope,
             flow = commonRepository.getDictData(
                 DictDataRequest(
-                    types = listOf("orderRefundReason")
-                )
+                    types = listOf("orderRefundReason"),
+                ),
             ).asResult(),
             showToast = false,
-            onLoading = { _refundReasonsModalUiState.value = BaseNetWorkUiState.Loading },
+            onLoading = {
+                _selectedRefundReason.value = null
+                _refundReasonsModalUiState.value = BaseNetWorkUiState.Loading
+            },
             onData = { data ->
-                _refundReasonsModalUiState.value =
-                    BaseNetWorkUiState.Success(data.orderRefundReason!!)
+                _selectedRefundReason.value = null
+                _refundReasonsModalUiState.value = requiredDictionaryUiState(data.orderRefundReason)
             },
             onError = { _, _ ->
+                _selectedRefundReason.value = null
                 _refundReasonsModalUiState.value = BaseNetWorkUiState.Error()
-            }
+            },
         )
     }
 
@@ -177,13 +179,13 @@ class OrderRefundViewModel @AssistedInject constructor(
             flow = orderRepository.refundOrder(
                 RefundOrderRequest(
                     orderId = requiredOrderId,
-                    reason = selectedReason.name ?: ""
-                )
+                    reason = selectedReason.name ?: "",
+                ),
             ).asResult(),
             onData = { _ ->
                 // 使用 NavigationResult 回传刷新信号，通知上一个页面刷新
                 popBackStackWithResult(OrderChangedResultKey, RefreshResult(refresh = true))
-            }
+            },
         )
     }
 
@@ -195,46 +197,44 @@ class OrderRefundViewModel @AssistedInject constructor(
      * @return 购物车列表
      * @author Joker.X
      */
-    private fun convertOrderGoodsToCart(order: Order): List<Cart> {
-        return order.goodsList?.let { goodsList ->
-            // 按商品ID分组
-            val groupedGoods = goodsList.groupBy { it.goodsId }
+    private fun convertOrderGoodsToCart(order: Order): List<Cart> = order.goodsList?.let { goodsList ->
+        // 按商品ID分组
+        val groupedGoods = goodsList.groupBy { it.goodsId }
 
-            // 为每个商品ID创建一个Cart对象
-            groupedGoods.map { (goodsId, items) ->
-                val firstItem = items.first()
+        // 为每个商品ID创建一个Cart对象
+        groupedGoods.map { (goodsId, items) ->
+            val firstItem = items.first()
 
-                Cart().apply {
-                    this.goodsId = goodsId
-                    this.goodsName = firstItem.goodsInfo?.title ?: ""
-                    this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
+            Cart().apply {
+                this.goodsId = goodsId
+                this.goodsName = firstItem.goodsInfo?.title ?: ""
+                this.goodsMainPic = firstItem.goodsInfo?.mainPic ?: ""
 
-                    // 收集该商品的所有规格
-                    val allSpecs = mutableListOf<CartGoodsSpec>()
+                // 收集该商品的所有规格
+                val allSpecs = mutableListOf<CartGoodsSpec>()
 
-                    // 遍历该商品的所有选中项
-                    items.forEach { orderGoods ->
-                        // 如果有规格信息，转换为CartGoodsSpec并添加
-                        orderGoods.spec?.let { spec ->
-                            val cartSpec = CartGoodsSpec(
-                                id = spec.id,
-                                goodsId = spec.goodsId,
-                                name = spec.name,
-                                price = spec.price,
-                                stock = spec.stock,
-                                count = orderGoods.count,
-                                images = spec.images
-                            )
-                            allSpecs.add(cartSpec)
-                        }
+                // 遍历该商品的所有选中项
+                items.forEach { orderGoods ->
+                    // 如果有规格信息，转换为CartGoodsSpec并添加
+                    orderGoods.spec?.let { spec ->
+                        val cartSpec = CartGoodsSpec(
+                            id = spec.id,
+                            goodsId = spec.goodsId,
+                            name = spec.name,
+                            price = spec.price,
+                            stock = spec.stock,
+                            count = orderGoods.count,
+                            images = spec.images,
+                        )
+                        allSpecs.add(cartSpec)
                     }
-
-                    // 设置规格列表
-                    this.spec = allSpecs
                 }
+
+                // 设置规格列表
+                this.spec = allSpecs
             }
-        } ?: emptyList()
-    }
+        }
+    } ?: emptyList()
 
     /**
      * Assisted Factory

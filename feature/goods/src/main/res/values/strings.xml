@@ -7,6 +7,8 @@
     <!-- 商品详情页 -->
     <string name="sold_count">已售 %d</string>
     <string name="coupon_text">满%d减%d元</string>
+    <string name="coupon_no_threshold_text">无门槛减%d元</string>
+    <string name="goods_content_empty">暂无图文详情</string>
     <string name="spec">规格</string>
     <string name="selected_spec">已选：%s</string>
     <string name="select_spec">选择规格</string>

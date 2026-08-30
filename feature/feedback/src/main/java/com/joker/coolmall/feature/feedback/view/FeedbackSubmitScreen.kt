@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.feedback.view
 
 import android.net.Uri
@@ -34,9 +36,9 @@ import com.joker.coolmall.core.designsystem.theme.SpaceHorizontalSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalSmall
 import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.response.DictDataResponse
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.bottombar.AppBottomButton
 import com.joker.coolmall.core.ui.component.card.AppCard
+import com.joker.coolmall.core.ui.component.empty.Empty
 import com.joker.coolmall.core.ui.component.imagepicker.ImageGridPicker
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkView
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
@@ -44,6 +46,7 @@ import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.feature.feedback.R
 import com.joker.coolmall.feature.feedback.viewmodel.FeedbackSubmitViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 提交反馈路由
@@ -52,9 +55,7 @@ import com.joker.coolmall.feature.feedback.viewmodel.FeedbackSubmitViewModel
  * @author Joker.X
  */
 @Composable
-internal fun FeedbackSubmitRoute(
-    viewModel: FeedbackSubmitViewModel = hiltViewModel()
-) {
+internal fun FeedbackSubmitRoute(viewModel: FeedbackSubmitViewModel = hiltViewModel()) {
     // UI状态
     val uiState by viewModel.uiState.collectAsState()
     // 选中的反馈类型
@@ -84,7 +85,7 @@ internal fun FeedbackSubmitRoute(
         onContactChange = viewModel::updateContact,
         onContentChange = viewModel::updateContent,
         onImagesChange = viewModel::updateSelectedImages,
-        onSubmitFeedback = viewModel::onSubmitButtonClick
+        onSubmitFeedback = viewModel::onSubmitButtonClick,
     )
 }
 
@@ -135,17 +136,25 @@ internal fun FeedbackSubmitScreen(
                     text = stringResource(R.string.submit),
                     onClick = onSubmitFeedback,
                     enabled = isFormValid && !isSubmitting,
-                    loading = isSubmitting
+                    loading = isSubmitting,
                 )
             }
-        }
+        },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
+            customEmpty = {
+                Empty(
+                    message = R.string.feedback_type_empty,
+                    subtitle = R.string.feedback_type_empty_hint,
+                    onRetryClick = onRetry,
+                )
+            },
         ) {
+            val feedbackTypes = it.feedbackType ?: return@BaseNetWorkView
             FeedbackSubmitContentView(
-                feedbackType = it.feedbackType!!,
+                feedbackType = feedbackTypes,
                 selectedFeedbackType = selectedFeedbackType,
                 contact = contact,
                 content = content,
@@ -190,19 +199,19 @@ private fun FeedbackSubmitContentView(
     onImagesChange: (List<Uri>) -> Unit = {},
 ) {
     VerticalList(
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
         AppCard(lineTitle = stringResource(R.string.feedback_type)) {
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(SpaceHorizontalSmall),
                 verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall),
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             ) {
                 feedbackType.forEach { item ->
                     FeedbackTypeChip(
                         dictItem = item,
                         isSelected = selectedFeedbackType?.value == item.value,
-                        onClick = { onFeedbackTypeSelected(item) }
+                        onClick = { onFeedbackTypeSelected(item) },
                     )
                 }
             }
@@ -218,16 +227,16 @@ private fun FeedbackSubmitContentView(
                 placeholder = {
                     AppText(
                         stringResource(R.string.feedback_content_hint),
-                        type = TextType.TERTIARY
+                        type = TextType.TERTIARY,
                     )
                 },
                 shape = ShapeMedium,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
                 ),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 5,
             )
         }
 
@@ -241,14 +250,14 @@ private fun FeedbackSubmitContentView(
                 placeholder = {
                     AppText(
                         stringResource(R.string.contact_info_hint),
-                        type = TextType.TERTIARY
+                        type = TextType.TERTIARY,
                     )
                 },
                 shape = ShapeMedium,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                )
+                    imeAction = ImeAction.Next,
+                ),
             )
         }
 
@@ -257,7 +266,7 @@ private fun FeedbackSubmitContentView(
                 selectedImages = selectedImages,
                 onImagesChanged = onImagesChange,
                 maxImages = 9,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }
@@ -273,18 +282,14 @@ private fun FeedbackSubmitContentView(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FeedbackTypeChip(
-    dictItem: DictItem,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+private fun FeedbackTypeChip(dictItem: DictItem, isSelected: Boolean, onClick: () -> Unit) {
     FilterChip(
         onClick = onClick,
         label = {
             dictItem.name?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         },
@@ -294,7 +299,7 @@ private fun FeedbackTypeChip(
             selectedContainerColor = MaterialTheme.colorScheme.primary,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             containerColor = MaterialTheme.colorScheme.surface,
-            labelColor = MaterialTheme.colorScheme.onSurface
+            labelColor = MaterialTheme.colorScheme.onSurface,
         ),
         border = FilterChipDefaults.filterChipBorder(
             enabled = true,
@@ -303,8 +308,8 @@ private fun FeedbackTypeChip(
                 MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.outline
-            }
-        )
+            },
+        ),
     )
 }
 
@@ -319,8 +324,8 @@ internal fun FeedbackSubmitScreenPreview() {
     AppTheme {
         FeedbackSubmitScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = DictDataResponse()
-            )
+                data = DictDataResponse(),
+            ),
         )
     }
 }
@@ -336,8 +341,8 @@ internal fun FeedbackSubmitScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         FeedbackSubmitScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = DictDataResponse()
-            )
+                data = DictDataResponse(),
+            ),
         )
     }
 }

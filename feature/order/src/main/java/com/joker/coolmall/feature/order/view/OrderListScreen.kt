@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -39,9 +41,6 @@ import com.joker.coolmall.core.designsystem.theme.SpacePaddingMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXSmall
 import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.entity.Order
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderNavigator
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.ui.component.dialog.WeDialog
 import com.joker.coolmall.core.ui.component.divider.WeDivider
 import com.joker.coolmall.core.ui.component.image.NetWorkImage
@@ -60,6 +59,9 @@ import com.joker.coolmall.feature.order.component.OrderButtons
 import com.joker.coolmall.feature.order.model.OrderStatus
 import com.joker.coolmall.feature.order.model.OrderTabState
 import com.joker.coolmall.feature.order.viewmodel.OrderListViewModel
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderNavigator
+import com.joker.coolmall.navigation.order.OrderRoutes
 import kotlinx.coroutines.launch
 
 /**
@@ -76,7 +78,7 @@ internal fun OrderListRoute(
     viewModel: OrderListViewModel = hiltViewModel<OrderListViewModel, OrderListViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 当前选中的标签索引
@@ -127,7 +129,7 @@ internal fun OrderListRoute(
             onLoadMore = { viewModel.onLoadMore(index) },
             shouldTriggerLoadMore = { lastIndex, totalCount ->
                 viewModel.shouldTriggerLoadMore(lastIndex, totalCount, index)
-            }
+            },
         )
     }
 
@@ -140,6 +142,7 @@ internal fun OrderListRoute(
         selectedCancelReason = selectedCancelReason,
         onCancelModalDismiss = viewModel::hideCancelModal,
         onCancelModalExpanded = viewModel::onCancelModalExpanded,
+        onCancelReasonRetry = viewModel::loadCancelReasons,
         onCancelReasonSelected = viewModel::selectCancelReason,
         onConfirmCancel = { viewModel.confirmCancelOrder() },
         showConfirmDialog = showConfirmDialog,
@@ -161,9 +164,8 @@ internal fun OrderListRoute(
         onTabSelected = viewModel::updateSelectedTab,
         onTabByPageChanged = viewModel::updateTabByPage,
         onAnimationCompleted = viewModel::notifyAnimationCompleted,
-        tabStateProvider = tabStateProvider
+        tabStateProvider = tabStateProvider,
     )
-
 }
 
 /**
@@ -180,6 +182,7 @@ internal fun OrderListRoute(
  * @param selectedCancelReason 选中的取消原因
  * @param onCancelModalDismiss 取消订单弹窗关闭回调
  * @param onCancelModalExpanded 取消订单弹窗展开完成回调
+ * @param onCancelReasonRetry 重新加载取消原因回调
  * @param onCancelReasonSelected 取消原因选中回调
  * @param onConfirmCancel 确认取消订单回调
  * @param showConfirmDialog 确认收货弹窗显示状态
@@ -215,6 +218,7 @@ internal fun OrderListScreen(
     selectedCancelReason: DictItem? = null,
     onCancelModalDismiss: () -> Unit = {},
     onCancelModalExpanded: () -> Unit = {},
+    onCancelReasonRetry: () -> Unit = {},
     onCancelReasonSelected: (DictItem) -> Unit = {},
     onConfirmCancel: () -> Unit = {},
     showConfirmDialog: Boolean = false,
@@ -245,13 +249,13 @@ internal fun OrderListScreen(
             onRetry = {},
             onRefresh = {},
             onLoadMore = {},
-            shouldTriggerLoadMore = { _, _ -> false }
+            shouldTriggerLoadMore = { _, _ -> false },
         )
-    }
+    },
 ) {
     AppScaffold(
         title = R.string.order_list,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         OrderListContentView(
             toGoodsDetail = toGoodsDetail,
@@ -263,7 +267,7 @@ internal fun OrderListScreen(
             onTabSelected = onTabSelected,
             onTabByPageChanged = onTabByPageChanged,
             onAnimationCompleted = onAnimationCompleted,
-            tabStateProvider = tabStateProvider
+            tabStateProvider = tabStateProvider,
         )
     }
 
@@ -278,7 +282,8 @@ internal fun OrderListScreen(
         onConfirm = { reason ->
             onConfirmCancel()
         },
-        onExpanded = onCancelModalExpanded
+        onRetry = onCancelReasonRetry,
+        onExpanded = onCancelModalExpanded,
     )
 
     // 确认收货弹窗
@@ -290,7 +295,7 @@ internal fun OrderListScreen(
             cancelText = stringResource(R.string.cancel),
             onOk = onConfirmReceive,
             onCancel = onConfirmDialogDismiss,
-            onDismiss = onConfirmDialogDismiss
+            onDismiss = onConfirmDialogDismiss,
         )
     }
 
@@ -301,7 +306,7 @@ internal fun OrderListScreen(
         buttonText = stringResource(R.string.rebuy),
         cartList = rebuyCartList,
         onDismiss = onRebuyModalDismiss,
-        onItemButtonClick = onRebuyGoodsSelected
+        onItemButtonClick = onRebuyGoodsSelected,
     )
 
     // 商品评论弹窗
@@ -315,7 +320,7 @@ internal fun OrderListScreen(
             commentCurrentOrder?.let { order ->
                 onCommentGoodsSelected(order.id, goodsId)
             }
-        }
+        },
     )
 }
 
@@ -348,14 +353,14 @@ private fun OrderListContentView(
     onTabSelected: (Int) -> Unit,
     onTabByPageChanged: (Int) -> Unit,
     onAnimationCompleted: () -> Unit,
-    tabStateProvider: @Composable (Int) -> OrderTabState
+    tabStateProvider: @Composable (Int) -> OrderTabState,
 ) {
     // 协程作用域
     val scope = rememberCoroutineScope()
 
     // 创建分页器状态
     val pageState = rememberPagerState(
-        initialPage = selectedTabIndex
+        initialPage = selectedTabIndex,
     ) {
         OrderStatus.entries.size
     }
@@ -366,7 +371,7 @@ private fun OrderListContentView(
         selectedTabIndex = selectedTabIndex,
         isAnimatingTabChange = isAnimatingTabChange,
         onTabByPageChanged = onTabByPageChanged,
-        onAnimationCompleted = onAnimationCompleted
+        onAnimationCompleted = onAnimationCompleted,
     )
 
     Column(modifier = modifier) {
@@ -378,14 +383,14 @@ private fun OrderListContentView(
                 scope.launch {
                     pageState.animateScrollToPage(index)
                 }
-            }
+            },
         )
 
         // 水平分页器
         HorizontalPager(
             state = pageState,
             userScrollEnabled = true,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         ) { page ->
             // 获取当前标签页的状态
             val tabState = tabStateProvider(page)
@@ -393,7 +398,7 @@ private fun OrderListContentView(
             // 使用 BaseNetWorkListView 包裹每个标签页
             BaseNetWorkListView(
                 uiState = tabState.uiState,
-                onRetry = tabState.onRetry
+                onRetry = tabState.onRetry,
             ) {
                 // 标签页的内容
                 OrderTabContent(
@@ -406,7 +411,7 @@ private fun OrderListContentView(
                     loadMoreState = tabState.loadMoreState,
                     onRefresh = tabState.onRefresh,
                     onLoadMore = tabState.onLoadMore,
-                    shouldTriggerLoadMore = tabState.shouldTriggerLoadMore
+                    shouldTriggerLoadMore = tabState.shouldTriggerLoadMore,
                 )
             }
         }
@@ -440,14 +445,14 @@ private fun OrderTabContent(
     loadMoreState: LoadMoreState,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
-    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean
+    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
         loadMoreState = loadMoreState,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
-        shouldTriggerLoadMore = shouldTriggerLoadMore
+        shouldTriggerLoadMore = shouldTriggerLoadMore,
     ) {
         // 订单列表项
         items(orderList.size) { index ->
@@ -460,7 +465,7 @@ private fun OrderTabContent(
                 },
                 toComment = { toOrderComment(order) },
                 onCancelClick = { cancelOrder(order.id) },
-                onConfirmClick = { onConfirmClick(order.id) }
+                onConfirmClick = { onConfirmClick(order.id) },
             )
         }
     }
@@ -486,7 +491,7 @@ private fun OrderCard(
     toGoodsDetail: () -> Unit = {},
     toComment: () -> Unit = {},
     onCancelClick: () -> Unit = {},
-    onConfirmClick: () -> Unit = {}
+    onConfirmClick: () -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -494,8 +499,9 @@ private fun OrderCard(
             .clickable(
                 onClick = {
                     OrderNavigator.toDetail(order.id)
-                }
-            )) {
+                },
+            ),
+    ) {
         AppListItem(
             title = order.orderNum,
             showArrow = false,
@@ -513,8 +519,8 @@ private fun OrderCard(
                     6 -> R.string.order_status_refunded
                     7 -> R.string.order_status_closed
                     else -> R.string.order_status_unknown
-                }
-            )
+                },
+            ),
         )
 
         // 订单商品列表
@@ -524,7 +530,7 @@ private fun OrderCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(SpacePaddingMedium)
-                    .padding(end = 80.dp)
+                    .padding(end = 80.dp),
             ) {
                 // 添加商品图片列表
                 order.goodsList?.forEach { goods ->
@@ -533,7 +539,7 @@ private fun OrderCard(
                         model = goods.spec?.images?.firstOrNull() ?: goods.goodsInfo?.mainPic,
                         size = 80.dp,
                         showBackground = true,
-                        cornerShape = ShapeSmall
+                        cornerShape = ShapeSmall,
                     )
                 }
             }
@@ -543,14 +549,14 @@ private fun OrderCard(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(80.dp)
-                    .padding(end = SpacePaddingMedium)
+                    .padding(end = SpacePaddingMedium),
             ) {
                 PriceText(order.price, integerTextSize = TextSize.BODY_LARGE)
                 SpaceVerticalXSmall()
                 AppText(
                     text = stringResource(R.string.total_items, order.goodsList?.size ?: 0),
                     size = TextSize.BODY_SMALL,
-                    type = TextType.TERTIARY
+                    type = TextType.TERTIARY,
                 )
             }
         }
@@ -569,7 +575,7 @@ private fun OrderCard(
                 onConfirmClick = onConfirmClick,
                 onLogisticsClick = { OrderNavigator.toLogistics(order.id) },
                 onCommentClick = toComment,
-                onRebuyClick = toGoodsDetail
+                onRebuyClick = toGoodsDetail,
             )
         }
     }
@@ -587,7 +593,7 @@ private fun OrderTabs(selectedIndex: Int, onTabSelected: (Int) -> Unit) {
     ScrollableTabRow(
         selectedTabIndex = selectedIndex,
         edgePadding = 0.dp,
-        divider = { WeDivider() }
+        divider = { WeDivider() },
     ) {
         OrderStatus.entries.forEachIndexed { index, status ->
             Tab(
@@ -596,14 +602,13 @@ private fun OrderTabs(selectedIndex: Int, onTabSelected: (Int) -> Unit) {
                 text = {
                     AppText(
                         text = stringResource(status.labelRes),
-                        type = if (selectedIndex == index) TextType.PRIMARY else TextType.SECONDARY
+                        type = if (selectedIndex == index) TextType.PRIMARY else TextType.SECONDARY,
                     )
-                }
+                },
             )
         }
     }
 }
-
 
 /**
  * 处理页面状态变化的副作用
@@ -621,7 +626,7 @@ private fun HandlePageStateChanges(
     selectedTabIndex: Int,
     isAnimatingTabChange: Boolean,
     onTabByPageChanged: (Int) -> Unit,
-    onAnimationCompleted: () -> Unit
+    onAnimationCompleted: () -> Unit,
 ) {
     // 当标签选择变化时，自动滚动到相应页面
     LaunchedEffect(selectedTabIndex, isAnimatingTabChange) {
