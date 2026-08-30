@@ -1,23 +1,25 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.market.view
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.model.entity.Coupon
 import com.joker.coolmall.core.model.preview.previewMyCoupons
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.coupon.CouponCard
 import com.joker.coolmall.core.ui.component.coupon.CouponCardMode
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkListView
 import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.market.viewmodel.CouponViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 我的优惠券路由
@@ -26,17 +28,15 @@ import com.joker.coolmall.feature.market.viewmodel.CouponViewModel
  * @author Joker.X
  */
 @Composable
-internal fun CouponRoute(
-    viewModel: CouponViewModel = hiltViewModel()
-) {
+internal fun CouponRoute(viewModel: CouponViewModel = hiltViewModel()) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 优惠券列表数据
-    val listData by viewModel.listData.collectAsState()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
     // 是否正在刷新
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     // 加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
 
     CouponScreen(
         uiState = uiState,
@@ -47,7 +47,7 @@ internal fun CouponRoute(
         onLoadMore = viewModel::onLoadMore,
         shouldTriggerLoadMore = viewModel::shouldTriggerLoadMore,
         onRetry = viewModel::retryRequest,
-        onUseCoupon = viewModel::navigateToGoodsCategory
+        onUseCoupon = viewModel::navigateToGoodsCategory,
     )
 }
 
@@ -76,15 +76,15 @@ internal fun CouponScreen(
     onLoadMore: () -> Unit = {},
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean = { _, _ -> false },
     onRetry: () -> Unit = {},
-    onUseCoupon: (Coupon) -> Unit = {}
+    onUseCoupon: (Coupon) -> Unit = {},
 ) {
     AppScaffold(
         title = com.joker.coolmall.feature.market.R.string.coupon_title,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             CouponContentView(
                 data = listData,
@@ -93,7 +93,7 @@ internal fun CouponScreen(
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
                 shouldTriggerLoadMore = shouldTriggerLoadMore,
-                onUseCoupon = onUseCoupon
+                onUseCoupon = onUseCoupon,
             )
         }
     }
@@ -120,7 +120,7 @@ private fun CouponContentView(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
-    onUseCoupon: (Coupon) -> Unit
+    onUseCoupon: (Coupon) -> Unit,
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
@@ -134,7 +134,7 @@ private fun CouponContentView(
             CouponCard(
                 coupon = data[index],
                 mode = CouponCardMode.VIEW,
-                onActionClick = { onUseCoupon(data[index]) }
+                onActionClick = { onUseCoupon(data[index]) },
             )
         }
     }
@@ -151,7 +151,7 @@ internal fun CouponScreenPreview() {
     AppTheme {
         CouponScreen(
             uiState = BaseNetWorkListUiState.Success,
-            listData = previewMyCoupons
+            listData = previewMyCoupons,
         )
     }
 }
@@ -167,7 +167,7 @@ internal fun CouponScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         CouponScreen(
             uiState = BaseNetWorkListUiState.Success,
-            listData = previewMyCoupons
+            listData = previewMyCoupons,
         )
     }
 }
