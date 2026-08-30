@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.activity.compose.BackHandler
@@ -12,7 +14,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,14 +24,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.alipay.sdk.app.PayTask
 import com.joker.coolmall.core.designsystem.component.CenterRow
 import com.joker.coolmall.core.designsystem.component.VerticalList
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.ColorDanger
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalSmall
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.ui.component.bottombar.AppBottomButton
 import com.joker.coolmall.core.ui.component.button.CheckButton
 import com.joker.coolmall.core.ui.component.list.AppListItem
@@ -40,6 +40,9 @@ import com.joker.coolmall.core.ui.component.text.TextSize
 import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.viewmodel.OrderPayViewModel
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderRoutes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -56,34 +59,43 @@ internal fun OrderPayRoute(
     viewModel: OrderPayViewModel = hiltViewModel<OrderPayViewModel, OrderPayViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 订单支付路由参数
-    val orderPayRoute by viewModel.orderPayRoute.collectAsState()
+    val orderPayRoute by viewModel.orderPayRoute.collectAsStateWithLifecycle()
     // 支付宝支付信息
-    val alipayPayInfo by viewModel.alipayPayInfo.collectAsState()
+    val alipayPayInfo by viewModel.alipayPayInfo.collectAsStateWithLifecycle()
+    // 支付参数请求、SDK 调用及服务端确认的统一进行中状态
+    val isPaymentInProgress by viewModel.isPaymentInProgress.collectAsStateWithLifecycle()
     // 上下文
     val context = LocalContext.current
 
     OrderPayScreen(
         price = orderPayRoute.price,
+        isPaymentInProgress = isPaymentInProgress,
         onBackClick = viewModel::handleBackClick,
-        onPayClick = viewModel::startAlipayPayment
+        onPayClick = viewModel::startAlipayPayment,
     )
 
     // 处理支付宝支付
     LaunchedEffect(alipayPayInfo) {
         if (alipayPayInfo.isNotBlank()) {
             // 在子线程中执行支付宝支付
-            val result = withContext(Dispatchers.IO) {
-                PayTask(context as androidx.activity.ComponentActivity).payV2(
-                    alipayPayInfo,
-                    true
-                )
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    PayTask(context as androidx.activity.ComponentActivity).payV2(
+                        alipayPayInfo,
+                        true,
+                    )
+                }
+                // 处理支付结果
+                viewModel.processAlipayResult(result)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                viewModel.processAlipayLaunchError(exception)
             }
-            // 处理支付结果
-            viewModel.processAlipayResult(result)
         }
     }
 
@@ -104,10 +116,10 @@ internal fun OrderPayRoute(
 @Composable
 internal fun OrderPayScreen(
     price: Int = 0,
+    isPaymentInProgress: Boolean = false,
     onBackClick: () -> Unit = { navigateBack() },
     onPayClick: () -> Unit = {},
 ) {
-
     AppScaffold(
         title = R.string.order_pay,
         useLargeTopBar = true,
@@ -121,8 +133,10 @@ internal fun OrderPayScreen(
             AppBottomButton(
                 text = priceText,
                 onClick = onPayClick,
+                enabled = !isPaymentInProgress,
+                loading = isPaymentInProgress,
             )
-        }
+        },
     ) {
         OrderPayContentView(
             price = price,
@@ -137,13 +151,11 @@ internal fun OrderPayScreen(
  * @author Joker.X
  */
 @Composable
-private fun OrderPayContentView(
-    price: Int
-) {
+private fun OrderPayContentView(price: Int) {
     VerticalList(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
         SpaceVerticalSmall()
         CenterRow {
@@ -153,7 +165,7 @@ private fun OrderPayContentView(
                 size = TextSize.DISPLAY_LARGE,
                 modifier = Modifier
                     .alignByBaseline()
-                    .padding(end = 2.dp)
+                    .padding(end = 2.dp),
             )
 
             Text(
@@ -161,14 +173,14 @@ private fun OrderPayContentView(
                 fontWeight = FontWeight.Bold,
                 fontSize = 42.sp,
                 color = ColorDanger,
-                modifier = Modifier.alignByBaseline()
+                modifier = Modifier.alignByBaseline(),
             )
 
             AppText(
                 text = ".00",
                 type = TextType.ERROR,
                 size = TextSize.DISPLAY_LARGE,
-                modifier = Modifier.alignByBaseline()
+                modifier = Modifier.alignByBaseline(),
             )
         }
 
@@ -180,7 +192,7 @@ private fun OrderPayContentView(
                     Image(
                         painter = painterResource(id = com.joker.coolmall.core.ui.R.drawable.ic_alipay),
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
                     )
                 },
                 title = stringResource(R.string.pay_method_alipay),
@@ -189,9 +201,9 @@ private fun OrderPayContentView(
                     CheckButton(
                         selected = true,
                         onClick = {},
-                        size = 22
+                        size = 22,
                     )
-                }
+                },
             )
 
             AppListItem(
@@ -199,7 +211,7 @@ private fun OrderPayContentView(
                     Image(
                         painter = painterResource(id = com.joker.coolmall.core.ui.R.drawable.ic_wechat),
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
                     )
                 },
                 title = stringResource(R.string.pay_method_wechat),
@@ -208,9 +220,9 @@ private fun OrderPayContentView(
                     CheckButton(
                         selected = false,
                         onClick = {},
-                        size = 22
+                        size = 22,
                     )
-                }
+                },
             )
 
             AppListItem(
@@ -218,7 +230,7 @@ private fun OrderPayContentView(
                     Image(
                         painter = painterResource(id = com.joker.coolmall.core.ui.R.drawable.ic_qq),
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
                     )
                 },
                 title = stringResource(R.string.pay_method_qq),
@@ -227,15 +239,15 @@ private fun OrderPayContentView(
                     CheckButton(
                         selected = false,
                         onClick = {},
-                        size = 22
+                        size = 22,
                     )
-                }
+                },
             )
         }
         AppText(
             stringResource(R.string.order_pay_tip),
             type = TextType.TERTIARY,
-            size = TextSize.BODY_SMALL
+            size = TextSize.BODY_SMALL,
         )
     }
 }
@@ -268,4 +280,4 @@ internal fun OrderPayScreenPreviewDark() {
             price = 9999,
         )
     }
-} 
+}

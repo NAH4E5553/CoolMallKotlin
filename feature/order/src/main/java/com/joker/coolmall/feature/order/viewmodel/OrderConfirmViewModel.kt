@@ -2,6 +2,7 @@ package com.joker.coolmall.feature.order.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
+import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.viewmodel.BaseNetWorkViewModel
 import com.joker.coolmall.core.data.repository.CartRepository
 import com.joker.coolmall.core.data.repository.OrderRepository
@@ -16,23 +17,24 @@ import com.joker.coolmall.core.model.entity.SelectedGoods
 import com.joker.coolmall.core.model.request.CreateOrderRequest
 import com.joker.coolmall.core.model.request.CreateOrderRequest.CreateOrder
 import com.joker.coolmall.core.model.response.NetworkResponse
-import com.joker.coolmall.navigation.navigateAndCloseCurrent
-import com.joker.coolmall.navigation.order.OrderRoutes
-import com.joker.coolmall.navigation.resultEvents
 import com.joker.coolmall.core.navigation.user.SelectAddressResultKey
+import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.core.util.storage.MMKVUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.feature.order.R
-import com.joker.coolmall.result.ResultHandler
-import com.joker.coolmall.result.asResult
+import com.joker.coolmall.navigation.navigateAndCloseCurrent
+import com.joker.coolmall.navigation.order.OrderRoutes
+import com.joker.coolmall.navigation.resultEvents
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 订单确认页面ViewModel
@@ -48,7 +50,7 @@ class OrderConfirmViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val orderRepository: OrderRepository,
     private val cartRepository: CartRepository,
-    private val pageRepository: PageRepository
+    private val pageRepository: PageRepository,
 ) : BaseNetWorkViewModel<ConfirmOrder>() {
 
     /**
@@ -86,6 +88,12 @@ class OrderConfirmViewModel @Inject constructor(
      */
     private val _totalPrice = MutableStateFlow(0.0)
     val totalPrice: StateFlow<Double> = _totalPrice.asStateFlow()
+
+    /**
+     * 是否正在创建订单并处理下单后的本地购物车同步。
+     */
+    private val _isSubmitting = MutableStateFlow(false)
+    val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
     /**
      * 从购物车来的商品项
@@ -130,7 +138,7 @@ class OrderConfirmViewModel @Inject constructor(
                             price = spec.price,
                             stock = spec.stock,
                             count = selectedItem.count,
-                            images = spec.images
+                            images = spec.images,
                         )
                         allSpecs.add(cartSpec)
                     }
@@ -179,9 +187,7 @@ class OrderConfirmViewModel @Inject constructor(
      * @return 确认订单网络响应流
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<ConfirmOrder>> {
-        return pageRepository.getConfirmOrder()
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<ConfirmOrder>> = pageRepository.getConfirmOrder()
 
     /**
      * 提交订单点击事件
@@ -189,7 +195,16 @@ class OrderConfirmViewModel @Inject constructor(
      * @author Joker.X
      */
     fun onSubmitOrderClick() {
-        val addressId = super.getSuccessData().defaultAddress?.id
+        if (_isSubmitting.value) return
+
+        val confirmOrder = (uiState.value as? BaseNetWorkUiState.Success)?.data ?: return
+        val goodsList = selectedGoodsList.orEmpty()
+        if (goodsList.isEmpty()) {
+            ToastUtils.showError(R.string.order_goods_empty)
+            return
+        }
+
+        val addressId = confirmOrder.defaultAddress?.id
         if (addressId == null) {
             ToastUtils.showError(R.string.select_address)
             return
@@ -199,30 +214,41 @@ class OrderConfirmViewModel @Inject constructor(
         val params = CreateOrderRequest(
             data = CreateOrder(
                 addressId = addressId,
-                goodsList = selectedGoodsList ?: emptyList(),
+                goodsList = goodsList,
                 title = context.getString(R.string.purchase_goods),
                 remark = _remark.value,
-                couponId = _selectedCoupon.value?.id
-            )
+                couponId = _selectedCoupon.value?.id,
+            ),
         )
 
-        ResultHandler.handleResultWithData(
-            scope = viewModelScope,
-            flow = orderRepository.createOrder(params).asResult(),
-            showToast = true,
-            onData = { data ->
-                // 创建订单成功
-//                ToastUtils.showSuccess("订单创建成功")
-
-                // 如果是从购物车来的，需要删除对应的购物车项
-                if (cachedCarts != null && cachedCarts.isNotEmpty()) {
-                    deleteCartItems()
+        _isSubmitting.value = true
+        viewModelScope.launch {
+            try {
+                val response = orderRepository.createOrder(params).first()
+                if (!response.isSucceeded) {
+                    ToastUtils.showError(
+                        response.message ?: context.getString(R.string.order_create_failed),
+                    )
+                    return@launch
                 }
 
-                // 跳转到支付页面
-                navigateToPayment(data)
+                val order = response.data
+                if (order == null) {
+                    ToastUtils.showError(R.string.order_create_failed)
+                    return@launch
+                }
+
+                cleanPurchasedCartItems()
+                navigateToPayment(order)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                LogUtils.e(TAG, "Failed to create order", exception)
+                ToastUtils.showError(R.string.order_create_failed)
+            } finally {
+                _isSubmitting.value = false
             }
-        )
+        }
     }
 
     /**
@@ -238,7 +264,7 @@ class OrderConfirmViewModel @Inject constructor(
         // 跳转到支付页面并关闭当前页面
         navigateAndCloseCurrent(
             OrderRoutes.Pay(orderId = orderId, price = paymentPrice, from = "confirm"),
-            OrderRoutes.Confirm
+            OrderRoutes.Confirm,
         )
     }
 
@@ -247,9 +273,10 @@ class OrderConfirmViewModel @Inject constructor(
      *
      * @author Joker.X
      */
-    private fun deleteCartItems() {
-        viewModelScope.launch {
-            cachedCarts?.forEach { cart ->
+    private suspend fun cleanPurchasedCartItems() {
+        var cleanupFailed = false
+        cachedCarts.orEmpty().forEach { cart ->
+            try {
                 val goodsId = cart.goodsId
 
                 // 获取该商品所有的规格ID
@@ -272,7 +299,17 @@ class OrderConfirmViewModel @Inject constructor(
                         }
                     }
                 }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                cleanupFailed = true
+                LogUtils.e(TAG, "Failed to remove purchased cart items", exception)
             }
+        }
+
+        if (cleanupFailed) {
+            // 订单已由服务端创建，不能让用户重复下单；提示本地同步失败后继续支付。
+            ToastUtils.showWarning(R.string.cart_cleanup_failed)
         }
     }
 
@@ -364,5 +401,9 @@ class OrderConfirmViewModel @Inject constructor(
         val currentData = super.getSuccessData()
         val updatedData = currentData.copy(defaultAddress = address)
         super.setSuccessState(updatedData)
+    }
+
+    private companion object {
+        const val TAG = "OrderConfirm"
     }
 }

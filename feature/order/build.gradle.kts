@@ -8,8 +8,11 @@ android {
 }
 
 dependencies {
-    //支付宝支付
+    // 支付宝支付
     implementation(libs.alipaysdk.android)
     // kotlin序列化
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }
