@@ -5,4 +5,7 @@ plugins {
 android {
     namespace = "com.joker.coolmall.feature.auth"
 }
-dependencies {}
+dependencies {
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+}
