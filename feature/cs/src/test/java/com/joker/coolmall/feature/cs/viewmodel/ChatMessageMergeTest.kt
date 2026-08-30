@@ -65,6 +65,35 @@ class ChatMessageMergeTest {
         assertEquals(currentMessages, result)
     }
 
+    @Test
+    fun `unread ids include only unread customer messages`() {
+        val result = unreadCustomerMessageIds(
+            listOf(
+                CsMsg(id = 3, type = 1, status = 0),
+                CsMsg(id = 2, type = 0, status = 0),
+                CsMsg(id = 1, type = 1, status = 1),
+                CsMsg(id = 3, type = 1, status = 0),
+                CsMsg(id = 0, type = 1, status = 0),
+            ),
+        )
+
+        assertEquals(listOf(3L), result)
+    }
+
+    @Test
+    fun `read confirmation updates only confirmed local messages`() {
+        val result = markMessagesRead(
+            messages = listOf(
+                CsMsg(id = 3, status = 0),
+                CsMsg(id = 2, status = 0),
+                CsMsg(id = 1, status = 1),
+            ),
+            readMessageIds = setOf(3, 1),
+        )
+
+        assertEquals(listOf(1, 0, 1), result.map(CsMsg::status))
+    }
+
     private fun messages(vararg ids: Long): List<CsMsg> = ids.map { id ->
         CsMsg(id = id)
     }

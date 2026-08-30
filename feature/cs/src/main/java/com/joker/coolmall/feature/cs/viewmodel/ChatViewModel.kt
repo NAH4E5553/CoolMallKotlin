@@ -12,13 +12,13 @@ import com.joker.coolmall.core.model.request.MessagePageRequest
 import com.joker.coolmall.core.model.request.ReadMessageRequest
 import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.core.util.log.LogUtils
-import com.joker.coolmall.feature.cs.state.WebSocketConnectionState
 import com.joker.coolmall.feature.cs.util.ChatSoundManager
 import com.joker.coolmall.feature.cs.util.WebSocketManager
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 private const val TAG = "ChatViewModel"
 
@@ -52,14 +51,28 @@ internal fun mergeFirstPageMessages(
 /**
  * 将更早的历史消息追加到当前倒序消息列表，并按消息 ID 去重。
  */
-internal fun appendOlderMessages(
-    currentMessages: List<CsMsg>,
-    pageMessages: List<CsMsg>,
-): List<CsMsg> = buildList {
+internal fun appendOlderMessages(currentMessages: List<CsMsg>, pageMessages: List<CsMsg>): List<CsMsg> = buildList {
     val addedIds = mutableSetOf<Long>()
 
     (currentMessages + pageMessages).forEach { message ->
         if (addedIds.add(message.id)) add(message)
+    }
+}
+
+/** 只将客服发送、尚未读取且具有有效 ID 的消息提交给已读接口。 */
+internal fun unreadCustomerMessageIds(messages: List<CsMsg>): List<Long> = messages
+    .asSequence()
+    .filter { message -> message.type == 1 && message.status == 0 && message.id > 0 }
+    .map(CsMsg::id)
+    .distinct()
+    .toList()
+
+/** 将服务端确认成功的消息同步为本地已读状态。 */
+internal fun markMessagesRead(messages: List<CsMsg>, readMessageIds: Set<Long>): List<CsMsg> = messages.map { message ->
+    if (message.id in readMessageIds && message.status == 0) {
+        message.copy(status = 1)
+    } else {
+        message
     }
 }
 
@@ -89,7 +102,7 @@ class ChatViewModel @Inject constructor(
     val uiState: StateFlow<BaseNetWorkUiState<Unit>> = _uiState.asStateFlow()
 
     // 会话ID (内部使用)
-    private val _sessionId = MutableStateFlow<Long>(0)
+    private val sessionId = MutableStateFlow<Long>(0)
 
     // 聊天消息列表 (倒序排列，最新的在前面)
     private val _messages = MutableStateFlow<List<CsMsg>>(emptyList())
@@ -98,10 +111,6 @@ class ChatViewModel @Inject constructor(
     // 新消息ID集合，用于控制动画
     private val _newMessageIds = MutableStateFlow<Set<Long>>(emptySet())
     val newMessageIds: StateFlow<Set<Long>> = _newMessageIds.asStateFlow()
-
-    // WebSocket连接状态 (内部使用)
-    private val _connectionState =
-        MutableStateFlow<WebSocketConnectionState>(WebSocketConnectionState.Disconnected)
 
     // 是否正在加载历史消息
     private val _isLoadingHistory = MutableStateFlow(false)
@@ -131,6 +140,12 @@ class ChatViewModel @Inject constructor(
     /** 请求序号，用于阻止取消后仍返回的旧请求提交消息。 */
     private var historyRequestSequence = 0L
 
+    /** 当前已读请求。用于合并请求期间到达的新消息，避免重复提交同一批 ID。 */
+    private var markReadJob: Job? = null
+
+    /** 页面处于 STARTED 状态时才维持实时连接并提交已读。 */
+    private var isScreenStarted = false
+
     // WebSocket管理器
     private val webSocketManager = WebSocketManager()
 
@@ -156,12 +171,6 @@ class ChatViewModel @Inject constructor(
                 addNewMessage(message)
             }
         }
-
-        webSocketManager.setOnConnectionStateChanged { state ->
-            viewModelScope.launch {
-                _connectionState.value = state
-            }
-        }
     }
 
     /**
@@ -176,7 +185,7 @@ class ChatViewModel @Inject constructor(
             scope = viewModelScope,
             flow = customerServiceRepository.createSession().asResult(),
             onData = { session ->
-                _sessionId.value = session.id
+                sessionId.value = session.id
                 LogUtils.d(TAG, "会话创建成功: sessionId = ${session.id}")
 
                 // 设置成功状态
@@ -185,17 +194,14 @@ class ChatViewModel @Inject constructor(
                 // 获取历史消息
                 loadHistoryMessages()
 
-                // 建立WebSocket连接
-                connectWebSocket()
-
-                // 标记消息为已读
-                markMessagesAsRead()
+                if (isScreenStarted) {
+                    connectWebSocket()
+                }
             },
             onError = { message, exception ->
                 LogUtils.e(TAG, "会话创建失败: $message")
                 _uiState.value = BaseNetWorkUiState.Error(message, exception)
-                _connectionState.value = WebSocketConnectionState.Error("创建会话失败")
-            }
+            },
         )
     }
 
@@ -215,13 +221,9 @@ class ChatViewModel @Inject constructor(
     /**
      * 使用不可变页码快照发起历史消息请求。
      */
-    private fun startHistoryRequest(
-        requestPage: Int,
-        loadType: LoadType,
-        cancelCurrent: Boolean,
-    ) {
-        val sessionId = _sessionId.value
-        if (sessionId <= 0) return
+    private fun startHistoryRequest(requestPage: Int, loadType: LoadType, cancelCurrent: Boolean) {
+        val currentSessionId = sessionId.value
+        if (currentSessionId <= 0) return
 
         if (cancelCurrent) {
             historyRequestSequence++
@@ -235,7 +237,7 @@ class ChatViewModel @Inject constructor(
         val messageIdsAtRequestStart = _messages.value.mapTo(mutableSetOf()) { it.id }
         val previousLoadMoreState = _loadMoreState.value
 
-        LogUtils.d(TAG, "开始加载历史消息: sessionId = $sessionId, page = $requestPage")
+        LogUtils.d(TAG, "开始加载历史消息: sessionId = $currentSessionId, page = $requestPage")
         _isLoadingHistory.value = true
 
         // 如果是加载更多，设置加载状态
@@ -244,9 +246,9 @@ class ChatViewModel @Inject constructor(
         }
 
         val params = MessagePageRequest(
-            sessionId = sessionId,
+            sessionId = currentSessionId,
             page = requestPage,
-            size = pageSize
+            size = pageSize,
         )
 
         historyRequestJob = ResultHandler.handleResultWithData(
@@ -279,7 +281,7 @@ class ChatViewModel @Inject constructor(
                         }
                     }
                 }
-            }
+            },
         )
     }
 
@@ -323,6 +325,10 @@ class ChatViewModel @Inject constructor(
         _isLoadingHistory.value = false
         _loadMoreState.value =
             if (hasMoreData) LoadMoreState.PullToLoad else LoadMoreState.NoMore
+
+        if (isScreenStarted) {
+            markMessagesAsRead()
+        }
     }
 
     /**
@@ -389,8 +395,9 @@ class ChatViewModel @Inject constructor(
             _newMessageIds.value = _newMessageIds.value + message.id
 
             // 播放接收消息音效（客服回复）
-            if (message.type == 1) { // 1-回复(客服)
+            if (message.type == 1 && isScreenStarted) { // 1-回复(客服)
                 chatSoundManager.playMessageReceivedSound()
+                markMessagesAsRead()
             }
 
             // 触发新消息事件
@@ -430,8 +437,8 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(content: String = _inputText.value, type: String = "text") {
         if (content.isBlank()) return
 
-        val sessionId = _sessionId.value
-        if (sessionId <= 0) {
+        val currentSessionId = sessionId.value
+        if (currentSessionId <= 0) {
             LogUtils.e(TAG, "发送消息失败: 无效的会话ID")
             return
         }
@@ -443,7 +450,7 @@ class ChatViewModel @Inject constructor(
         }
 
         // 通过WebSocketManager发送消息
-        val success = webSocketManager.sendMessage(sessionId, content, type)
+        val success = webSocketManager.sendMessage(currentSessionId, content, type)
         if (success) {
             LogUtils.d(TAG, "消息发送成功")
             // 播放发送消息音效
@@ -461,25 +468,55 @@ class ChatViewModel @Inject constructor(
      *
      * @author Joker.X
      */
-    fun markMessagesAsRead() {
-        viewModelScope.launch {
-            // 获取未读消息ID列表
-            val unreadMessages = _messages.value.filter { it.status == 0 }
-            if (unreadMessages.isEmpty()) return@launch
+    private fun markMessagesAsRead() {
+        if (!isScreenStarted || markReadJob?.isActive == true) return
 
-            val ids = unreadMessages.map { it.id }
-            LogUtils.d(TAG, "标记消息已读: ${ids.joinToString()}")
-            val request = ReadMessageRequest(ids)
+        val ids = unreadCustomerMessageIds(_messages.value)
+        if (ids.isEmpty()) return
 
+        markReadJob = viewModelScope.launch {
+            var shouldDrainPendingMessages = false
             try {
-                customerServiceRepository.readMessage(request).first()
-                LogUtils.d(TAG, "消息已标记为已读")
+                val response = customerServiceRepository
+                    .readMessage(ReadMessageRequest(ids))
+                    .first()
+                if (response.isSucceeded) {
+                    _messages.value = markMessagesRead(_messages.value, ids.toSet())
+                    shouldDrainPendingMessages = true
+                    LogUtils.d(TAG, "客服消息已标记为已读: count=${ids.size}")
+                } else {
+                    LogUtils.e(TAG, "标记客服消息已读失败: code=${response.code}")
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                LogUtils.e(TAG, "标记消息已读失败", e)
+                LogUtils.e(TAG, "标记客服消息已读失败", e)
+            } finally {
+                markReadJob = null
+                if (shouldDrainPendingMessages && isScreenStarted) {
+                    markMessagesAsRead()
+                }
             }
         }
+    }
+
+    /** 页面进入前台：恢复实时连接，并处理已加载的未读客服消息。 */
+    fun onScreenStarted() {
+        if (isScreenStarted) return
+
+        isScreenStarted = true
+        if (sessionId.value > 0) {
+            connectWebSocket()
+            markMessagesAsRead()
+        }
+    }
+
+    /** 页面离开前台：停止实时连接，避免后台继续持有聊天通道。 */
+    fun onScreenStopped() {
+        if (!isScreenStarted) return
+
+        isScreenStarted = false
+        disconnectWebSocket()
     }
 
     /**
@@ -505,7 +542,7 @@ class ChatViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        disconnectWebSocket()
+        webSocketManager.dispose()
         chatSoundManager.release()
         super.onCleared()
     }

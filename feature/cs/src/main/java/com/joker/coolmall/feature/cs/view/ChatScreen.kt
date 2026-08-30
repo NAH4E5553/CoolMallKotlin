@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.cs.view
 
 import androidx.compose.animation.AnimatedVisibility
@@ -38,7 +40,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.component.AppColumn
@@ -72,7 +75,6 @@ import com.joker.coolmall.core.designsystem.theme.SpacePaddingSmall
 import com.joker.coolmall.core.designsystem.theme.SpacePaddingXSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalSmall
 import com.joker.coolmall.core.model.entity.CsMsg
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.appbar.CenterTopAppBar
 import com.joker.coolmall.core.ui.component.image.Avatar
 import com.joker.coolmall.core.ui.component.image.NetWorkImage
@@ -88,6 +90,7 @@ import com.joker.coolmall.feature.cs.R
 import com.joker.coolmall.feature.cs.component.ChatInputArea
 import com.joker.coolmall.feature.cs.component.ChatLoadMore
 import com.joker.coolmall.feature.cs.viewmodel.ChatViewModel
+import com.joker.coolmall.navigation.navigateBack
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -98,22 +101,27 @@ import kotlinx.coroutines.launch
  * @author Joker.X
  */
 @Composable
-internal fun ChatRoute(
-    viewModel: ChatViewModel = hiltViewModel()
-) {
+internal fun ChatRoute(viewModel: ChatViewModel = hiltViewModel()) {
+    LifecycleStartEffect(viewModel) {
+        viewModel.onScreenStarted()
+        onStopOrDispose {
+            viewModel.onScreenStopped()
+        }
+    }
+
     // 从ViewModel收集UI状态
     // 页面UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 消息列表
-    val messages by viewModel.messages.collectAsState()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
     // 是否正在加载历史消息
-    val isLoadingHistory by viewModel.isLoadingHistory.collectAsState()
+    val isLoadingHistory by viewModel.isLoadingHistory.collectAsStateWithLifecycle()
     // 加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
     // 输入框文本
-    val inputText by viewModel.inputText.collectAsState()
+    val inputText by viewModel.inputText.collectAsStateWithLifecycle()
     // 新消息ID集合
-    val newMessageIds by viewModel.newMessageIds.collectAsState()
+    val newMessageIds by viewModel.newMessageIds.collectAsStateWithLifecycle()
 
     ChatScreen(
         uiState = uiState,
@@ -126,9 +134,8 @@ internal fun ChatRoute(
         onLoadMore = viewModel::loadMoreMessages,
         onSendMessage = viewModel::sendMessage,
         onInputTextChange = viewModel::updateInputText,
-        onMarkAsRead = viewModel::markMessagesAsRead,
         newMessageEvent = viewModel.newMessageEvent,
-        onClearMessageAnimation = viewModel::clearMessageAnimation
+        onClearMessageAnimation = viewModel::clearMessageAnimation,
     )
 }
 
@@ -145,7 +152,6 @@ internal fun ChatRoute(
  * @param onLoadMore 加载更多消息回调
  * @param onSendMessage 发送消息回调
  * @param onInputTextChange 输入框文本变化回调
- * @param onMarkAsRead 标记消息已读回调
  * @param newMessageEvent 新消息事件流
  * @param onClearMessageAnimation 清除消息动画状态回调
  * @author Joker.X
@@ -163,9 +169,8 @@ internal fun ChatScreen(
     onLoadMore: () -> Unit = {},
     onSendMessage: () -> Unit = {},
     onInputTextChange: (String) -> Unit = {},
-    onMarkAsRead: () -> Unit = {},
     newMessageEvent: kotlinx.coroutines.flow.Flow<Unit>? = null,
-    onClearMessageAnimation: (Long) -> Unit = {}
+    onClearMessageAnimation: (Long) -> Unit = {},
 ) {
     val topBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
@@ -174,7 +179,7 @@ internal fun ChatScreen(
         topBar = {
             CenterTopAppBar(
                 title = R.string.customer_service_chat,
-                onBackClick = { navigateBack() }
+                onBackClick = { navigateBack() },
             )
         },
         contentWindowInsets = ScaffoldDefaults
@@ -257,16 +262,16 @@ private fun ChatContentView(
 
     FullScreenBox(
         modifier = modifier
-            .imePadding()
+            .imePadding(),
     ) {
         AppColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             // 消息列表
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
             ) {
                 MessageList(
                     messages = messages,
@@ -275,7 +280,7 @@ private fun ChatContentView(
                     scrollState = scrollState,
                     newMessageIds = newMessageIds,
                     onLoadMore = onLoadMore,
-                    onClearMessageAnimation = onClearMessageAnimation
+                    onClearMessageAnimation = onClearMessageAnimation,
                 )
             }
 
@@ -286,7 +291,7 @@ private fun ChatContentView(
                 onSendMessage = {
                     onSendMessage()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -312,7 +317,7 @@ fun MessageList(
     scrollState: LazyListState,
     newMessageIds: Set<Long>,
     onLoadMore: () -> Unit = {},
-    onClearMessageAnimation: (Long) -> Unit
+    onClearMessageAnimation: (Long) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -339,11 +344,11 @@ fun MessageList(
             reverseLayout = true,
             state = scrollState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = SpacePaddingSmall)
+            contentPadding = PaddingValues(vertical = SpacePaddingSmall),
         ) {
             itemsIndexed(
                 items = messages,
-                key = { _, message -> message.id }
+                key = { _, message -> message.id },
             ) { index, message ->
                 // 使用新的方法来判断是否显示时间头部，解决分页加载问题
                 val shouldShowTimeHeader = TimeUtils.shouldShowTimeHeaderInList(messages, index)
@@ -362,7 +367,7 @@ fun MessageList(
                     isFirstMessageByAuthor = true, // 简化处理
                     isLastMessageByAuthor = true, // 简化处理
                     isNewMessage = newMessageIds.contains(message.id),
-                    onAnimationFinished = { onClearMessageAnimation(message.id) }
+                    onAnimationFinished = { onClearMessageAnimation(message.id) },
                 )
             }
 
@@ -371,7 +376,7 @@ fun MessageList(
                 ChatLoadMore(
                     state = loadMoreState,
                     listState = scrollState,
-                    onRetry = onLoadMore
+                    onRetry = onLoadMore,
                 )
             }
         }
@@ -442,22 +447,22 @@ fun Message(
             initialOffsetX = { fullWidth -> if (isUserMe) fullWidth else -fullWidth },
             animationSpec = tween(
                 durationMillis = 400,
-                easing = FastOutSlowInEasing
-            )
+                easing = FastOutSlowInEasing,
+            ),
         ) + fadeIn(
             // 配合淡入效果，稍有延迟使动画更自然
             animationSpec = tween(
                 durationMillis = 300,
                 delayMillis = 100,
-                easing = FastOutSlowInEasing
-            )
-        )
+                easing = FastOutSlowInEasing,
+            ),
+        ),
     ) {
         AppRow(
             modifier = spaceBetweenAuthors
                 .fillMaxWidth()
                 .padding(horizontal = SpacePaddingMedium),
-            horizontalArrangement = if (isUserMe) Arrangement.End else Arrangement.Start
+            horizontalArrangement = if (isUserMe) Arrangement.End else Arrangement.Start,
         ) {
             if (!isUserMe && isLastMessageByAuthor) {
                 // 客服头像，左侧显示
@@ -467,7 +472,7 @@ fun Message(
                 Avatar(
                     avatarUrl = imageUrl,
                     size = 36.dp,
-                    modifier = Modifier.align(Alignment.Top)
+                    modifier = Modifier.align(Alignment.Top),
                 )
 
                 // 头像与消息之间的间距
@@ -490,7 +495,7 @@ fun Message(
                 Avatar(
                     avatarUrl = msg.avatarUrl,
                     size = 36.dp,
-                    modifier = Modifier.align(Alignment.Top)
+                    modifier = Modifier.align(Alignment.Top),
                 )
             }
         }
@@ -517,7 +522,7 @@ fun AuthorAndTextMessage(
 ) {
     AppColumn(
         modifier = modifier,
-        horizontalAlignment = if (isUserMe) Alignment.End else Alignment.Start
+        horizontalAlignment = if (isUserMe) Alignment.End else Alignment.Start,
     ) {
         if (isLastMessageByAuthor) {
             AuthorNameTimestamp(msg, isUserMe)
@@ -550,7 +555,7 @@ private fun AuthorNameTimestamp(msg: CsMsg, isUserMe: Boolean) {
             .padding(bottom = SpacePaddingXSmall)
             .semantics(mergeDescendants = true) {},
         horizontalArrangement = if (isUserMe) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!isUserMe) {
             // 为客服消息显示名称，优先使用adminUserName，如果为空则使用nickName
@@ -581,13 +586,13 @@ private val UserChatBubbleShape = RoundedCornerShape(
     topStart = 18.dp,
     topEnd = 4.dp,
     bottomStart = 18.dp,
-    bottomEnd = 18.dp
+    bottomEnd = 18.dp,
 )
 private val OtherChatBubbleShape = RoundedCornerShape(
     topStart = 4.dp,
     topEnd = 18.dp,
     bottomStart = 18.dp,
-    bottomEnd = 18.dp
+    bottomEnd = 18.dp,
 )
 
 /**
@@ -602,12 +607,12 @@ fun DayHeader(dayString: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = SpacePaddingSmall),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.padding(horizontal = SpacePaddingMedium)
+            modifier = Modifier.padding(horizontal = SpacePaddingMedium),
         ) {
             AppText(
                 text = dayString,
@@ -615,7 +620,7 @@ fun DayHeader(dayString: String) {
                 type = TextType.TERTIARY,
                 modifier = Modifier.padding(
                     horizontal = SpacePaddingSmall,
-                    vertical = 4.dp
+                    vertical = 4.dp,
                 ),
             )
         }
@@ -657,7 +662,7 @@ fun ChatItemBubble(message: CsMsg, isUserMe: Boolean) {
                         .padding(4.dp)
                         .size(200.dp),
                     cornerShape = RoundedCornerShape(12.dp),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
                 )
             }
 
@@ -669,7 +674,7 @@ fun ChatItemBubble(message: CsMsg, isUserMe: Boolean) {
                     color = textColor,
                     modifier = Modifier
                         .padding(horizontal = SpacePaddingLarge)
-                        .padding(vertical = SpacePaddingMedium)
+                        .padding(vertical = SpacePaddingMedium),
                 )
             }
         }
@@ -685,27 +690,23 @@ fun ChatItemBubble(message: CsMsg, isUserMe: Boolean) {
  * @author Joker.X
  */
 @Composable
-fun JumpToBottom(
-    enabled: Boolean,
-    onClicked: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun JumpToBottom(enabled: Boolean, onClicked: () -> Unit, modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = enabled,
         enter = fadeIn(tween(300)) +
-                scaleIn(
-                    initialScale = 0.8f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
+            scaleIn(
+                initialScale = 0.8f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow,
                 ),
+            ),
         exit = fadeOut(tween(200)) +
-                scaleOut(
-                    targetScale = 0.8f,
-                    animationSpec = tween(200)
-                ),
-        modifier = modifier
+            scaleOut(
+                targetScale = 0.8f,
+                animationSpec = tween(200),
+            ),
+        modifier = modifier,
     ) {
         Tag(
             stringResource(R.string.back_to_bottom),
@@ -715,7 +716,7 @@ fun JumpToBottom(
             modifier = Modifier
                 .padding(bottom = SpacePaddingSmall)
                 .clip(ShapeExtraLarge)
-                .clickable(onClick = onClicked)
+                .clickable(onClick = onClicked),
         )
     }
 }
