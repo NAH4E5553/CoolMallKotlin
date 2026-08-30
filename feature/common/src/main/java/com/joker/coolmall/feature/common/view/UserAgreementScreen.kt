@@ -1,6 +1,7 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.common.view
 
-import android.os.Build
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,11 +16,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkView
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.common.R
+import com.joker.coolmall.feature.common.util.SecureWebViewClient
+import com.joker.coolmall.feature.common.util.applySecureDefaults
+import com.joker.coolmall.feature.common.util.releaseFromComposition
 import com.joker.coolmall.feature.common.viewmodel.UserAgreementViewModel
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 用户协议路由
@@ -28,9 +32,7 @@ import com.joker.coolmall.feature.common.viewmodel.UserAgreementViewModel
  * @author Joker.X
  */
 @Composable
-internal fun UserAgreementRoute(
-    viewModel: UserAgreementViewModel = hiltViewModel()
-) {
+internal fun UserAgreementRoute(viewModel: UserAgreementViewModel = hiltViewModel()) {
     // 从ViewModel收集UI状态
     val uiState by viewModel.uiState.collectAsState()
 
@@ -51,7 +53,7 @@ internal fun UserAgreementRoute(
 @Composable
 internal fun UserAgreementScreen(
     uiState: BaseNetWorkUiState<String> = BaseNetWorkUiState.Loading,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
 ) {
     AppScaffold(
         title = R.string.user_agreement_title,
@@ -60,7 +62,7 @@ internal fun UserAgreementScreen(
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { html ->
             UserAgreementContentView(html = html)
         }
@@ -79,26 +81,19 @@ private fun UserAgreementContentView(html: String) {
         factory = { context ->
             WebView(context).apply {
                 settings.apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-
-                    // 基础设置
-                    // 不需要 JavaScript
-                    javaScriptEnabled = false
+                    applySecureDefaults()
                     loadsImagesAutomatically = true
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     setSupportZoom(true)
                     builtInZoomControls = true
                     displayZoomControls = false
-                    // 不需要存储
-                    domStorageEnabled = false
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        safeBrowsingEnabled = true
-                    }
                 }
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+                webViewClient = SecureWebViewClient(context = context)
 
                 // 加载 HTML 内容
                 loadDataWithBaseURL(
@@ -106,11 +101,12 @@ private fun UserAgreementContentView(html: String) {
                     html,
                     "text/html",
                     "UTF-8",
-                    null
+                    null,
                 )
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        onRelease = WebView::releaseFromComposition,
     )
 }
 
@@ -125,8 +121,8 @@ internal fun UserAgreementScreenPreview() {
     AppTheme {
         UserAgreementScreen(
             uiState = BaseNetWorkUiState.Success(
-                "1"
-            )
+                "1",
+            ),
         )
     }
 }
@@ -142,8 +138,8 @@ internal fun UserAgreementScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         UserAgreementScreen(
             uiState = BaseNetWorkUiState.Success(
-                "1"
-            )
+                "1",
+            ),
         )
     }
 }
