@@ -11,4 +11,7 @@ dependencies {
     implementation(libs.okhttp3)
     // kotlin序列化
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }

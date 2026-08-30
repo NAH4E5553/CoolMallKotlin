@@ -3,293 +3,378 @@ package com.joker.coolmall.feature.cs.util
 import com.joker.coolmall.core.model.entity.CsMsg
 import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.feature.cs.state.WebSocketConnectionState
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import java.util.concurrent.TimeUnit
 
 private const val TAG = "WebSocketManager"
+private const val WEB_SOCKET_URL = "wss://mall.dusksnow.top/socket.io/?EIO=4&transport=websocket"
+private val DEFAULT_RECONNECT_DELAYS_MILLIS = listOf(1_000L, 2_000L, 3_000L)
 
 /**
- * WebSocket管理器
- * 负责处理WebSocket连接、消息发送和接收
+ * 客服 WebSocket 连接管理器。
  *
- * @author Joker.X
+ * 同一个实例只维护一条期望连接。异常断开时使用最近一次有效 Token 执行有限次、可取消重连；
+ * 主动断开后不会重连。
  */
-class WebSocketManager {
+class WebSocketManager internal constructor(
+    private val webSocketFactory: WebSocket.Factory,
+    private val reconnectDelaysMillis: List<Long>,
+) {
+    constructor() : this(
+        webSocketFactory = createWebSocketClient(),
+        reconnectDelaysMillis = DEFAULT_RECONNECT_DELAYS_MILLIS,
+    )
 
-    // WebSocket连接状态
+    private val lock = Any()
+    private val request = Request.Builder().url(WEB_SOCKET_URL).build()
+
     private val _connectionState =
         MutableStateFlow<WebSocketConnectionState>(WebSocketConnectionState.Disconnected)
     val connectionState: StateFlow<WebSocketConnectionState> = _connectionState.asStateFlow()
 
-    // WebSocket客户端
-    private var webSocketClient: OkHttpClient? = null
     private var webSocket: WebSocket? = null
-
-    // 重试次数计数
+    private var reconnectJob: Job? = null
+    private var connectionScope: CoroutineScope? = null
+    private var token: String? = null
     private var retryCount = 0
-    private val maxRetries = 3
+    private var connectionGeneration = 0L
+    private var connectionRequested = false
+    private var disposed = false
 
-    // 回调接口
     private var onMessageReceived: ((CsMsg) -> Unit)? = null
-    private var onConnectionStateChanged: ((WebSocketConnectionState) -> Unit)? = null
 
-    /**
-     * 设置消息接收回调
-     *
-     * @param callback 消息接收回调函数
-     * @author Joker.X
-     */
     fun setOnMessageReceived(callback: (CsMsg) -> Unit) {
         onMessageReceived = callback
     }
 
-    /**
-     * 设置连接状态变化回调
-     *
-     * @param callback 连接状态变化回调函数
-     * @author Joker.X
-     */
-    fun setOnConnectionStateChanged(callback: (WebSocketConnectionState) -> Unit) {
-        onConnectionStateChanged = callback
-    }
-
-    /**
-     * 建立WebSocket连接
-     *
-     * @param token 用户认证Token
-     * @param scope 协程作用域
-     * @author Joker.X
-     */
     fun connect(token: String, scope: CoroutineScope) {
-        if (_connectionState.value == WebSocketConnectionState.Connecting) {
-            LogUtils.d(TAG, "WebSocket正在连接中，忽略重复连接请求")
+        if (token.isBlank()) {
+            closeConnection(dispose = false)
+            updateConnectionState(WebSocketConnectionState.Error("认证信息缺失"))
             return
         }
 
-        updateConnectionState(WebSocketConnectionState.Connecting)
-        LogUtils.d(TAG, "开始建立WebSocket连接")
+        var staleSocket: WebSocket? = null
+        val shouldConnect = synchronized(lock) {
+            if (disposed ||
+                _connectionState.value == WebSocketConnectionState.Connecting ||
+                _connectionState.value == WebSocketConnectionState.Connected
+            ) {
+                false
+            } else {
+                connectionRequested = true
+                connectionScope = scope
+                this.token = token
+                retryCount = 0
+                reconnectJob?.cancel()
+                reconnectJob = null
+                staleSocket = webSocket
+                webSocket = null
+                true
+            }
+        }
 
-        scope.launch {
-            LogUtils.d(TAG, "用户Token: ${token.take(15)}...")
+        if (shouldConnect) {
+            staleSocket?.cancel()
+            openConnection()
+        } else {
+            LogUtils.d(TAG, "忽略重复或已释放的连接请求")
+        }
+    }
 
-            val request = Request.Builder()
-                .url("wss://mall.dusksnow.top/socket.io/?EIO=4&transport=websocket")
-                .build()
+    private fun openConnection() {
+        val connection = synchronized(lock) {
+            val currentToken = token
+            val scope = connectionScope
+            if (!connectionRequested || disposed || currentToken == null || scope?.isActive != true) {
+                return
+            }
 
-            // 配置超时和心跳间隔
-            // 注意：禁用OkHttp的自动ping机制，我们自己处理心跳
-            webSocketClient = OkHttpClient.Builder()
-                .pingInterval(0, TimeUnit.SECONDS) // 禁用OkHttp的自动ping
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS) // 增加读取超时时间，避免长时间无消息导致断开
-                .writeTimeout(15, TimeUnit.SECONDS)
-                .build()
+            connectionGeneration++
+            ConnectionAttempt(
+                generation = connectionGeneration,
+                token = currentToken,
+            )
+        }
 
-            webSocket = webSocketClient?.newWebSocket(request, object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    LogUtils.d(TAG, "WebSocket连接成功: ${response.code}")
-                    retryCount = 0
+        if (!updateConnectionStateIfCurrent(
+                connection.generation,
+                WebSocketConnectionState.Connecting,
+            )
+        ) {
+            return
+        }
+        LogUtils.d(TAG, "开始建立 WebSocket 连接")
 
-                    // 发送认证消息
-                    val authMessage = """40/cs,{"isAdmin":false,"token":"$token"}"""
-                    LogUtils.d(TAG, "发送认证消息: ${authMessage.take(20)}...")
-                    webSocket.send(authMessage)
+        val listener = createListener(connection)
+        val newWebSocket = runCatching {
+            webSocketFactory.newWebSocket(request, listener)
+        }.getOrElse { error ->
+            handleConnectionFailure(connection.generation, error)
+            return
+        }
+
+        synchronized(lock) {
+            val state = _connectionState.value
+            if (isCurrentConnectionLocked(connection.generation) &&
+                (
+                    state == WebSocketConnectionState.Connecting ||
+                        state == WebSocketConnectionState.Connected
+                    )
+            ) {
+                webSocket = newWebSocket
+            } else {
+                newWebSocket.cancel()
+            }
+        }
+    }
+
+    private fun createListener(connection: ConnectionAttempt): WebSocketListener = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            if (!isCurrentConnection(connection.generation)) return
+
+            LogUtils.d(TAG, "WebSocket 传输连接成功: code=${response.code}")
+            val sent = webSocket.send(WebSocketProtocol.authenticationFrame(connection.token))
+            if (!sent) {
+                webSocket.cancel()
+                handleConnectionFailure(
+                    generation = connection.generation,
+                    error = IllegalStateException("认证消息发送失败"),
+                )
+            }
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            if (!isCurrentConnection(connection.generation)) return
+
+            when (val event = WebSocketProtocol.parse(text)) {
+                WebSocketEvent.Heartbeat -> {
+                    if (!webSocket.send("3")) {
+                        LogUtils.e(TAG, "WebSocket 心跳响应发送失败")
+                    }
                 }
 
-                override fun onMessage(webSocket: WebSocket, text: String) {
-                    LogUtils.d(TAG, "收到WebSocket消息: ${text}...")
-                    // 如果收到心跳包，立即响应
-                    if (text == "2") {
-                        LogUtils.d(TAG, "收到心跳包")
-                        val success = webSocket.send("3")
-                        // 检查心跳响应是否发送成功
-                        if (success) {
-                            LogUtils.d(TAG, "心跳响应发送成功")
-                        } else {
-                            LogUtils.e(TAG, "心跳响应发送失败")
+                WebSocketEvent.Authenticated -> {
+                    synchronized(lock) {
+                        if (isCurrentConnectionLocked(connection.generation)) {
+                            retryCount = 0
                         }
                     }
-                    handleWebSocketMessage(text)
+                    LogUtils.d(TAG, "WebSocket 认证成功")
+                    updateConnectionStateIfCurrent(
+                        connection.generation,
+                        WebSocketConnectionState.Connected,
+                    )
                 }
 
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    LogUtils.e(TAG, "WebSocket连接失败: ${t.message}", t)
-                    updateConnectionState(WebSocketConnectionState.Error(t.message ?: "连接错误"))
-
-                    // 尝试重连
-                    if (retryCount < maxRetries) {
-                        retryCount++
-                        retryConnection(scope)
-                    }
+                is WebSocketEvent.Message -> {
+                    LogUtils.d(
+                        TAG,
+                        "收到客服消息: id=${event.value.id}, type=${event.value.type}",
+                    )
+                    onMessageReceived?.invoke(event.value)
                 }
 
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    LogUtils.d(TAG, "WebSocket连接关闭: code=$code, reason=$reason")
-                    updateConnectionState(WebSocketConnectionState.Disconnected)
-                }
-            })
-        }
-    }
-
-    /**
-     * 重试连接
-     *
-     * @param scope 协程作用域
-     * @author Joker.X
-     */
-    private fun retryConnection(scope: CoroutineScope) {
-        scope.launch {
-            LogUtils.d(
-                TAG,
-                "WebSocket连接失败，${1000 * retryCount}毫秒后尝试重连 (第$retryCount)次"
-            )
-            delay(1000L * retryCount) // 延迟时间随重试次数增加
-            // 注意：这里需要重新获取token，所以需要外部调用connect方法
-        }
-    }
-
-    /**
-     * 处理WebSocket消息
-     *
-     * @param text 消息文本
-     * @author Joker.X
-     */
-    private fun handleWebSocketMessage(text: String) {
-        try {
-            when {
-                // 连接成功消息: 40/cs,{"sid":"708fb2ed-6d08-445c-9264-c57c521eb3f7"}
-                text.startsWith("40/cs,") -> {
-                    LogUtils.d(TAG, "WebSocket认证成功")
-                    updateConnectionState(WebSocketConnectionState.Connected)
-                }
-
-                // 握手消息: 0{"sid":"708fb2ed-6d08-445c-9264-c57c521eb3f7","upgrades":[],"pingInterval":25000,"pingTimeout":6000000}
-                text.startsWith("0{") -> {
-                    LogUtils.d(TAG, "WebSocket握手成功")
-                    // 握手成功，不做特殊处理
-                }
-
-                // 心跳消息: 2
-                // 注意：这个处理已经移到onMessage中直接处理，以确保及时响应
-                text == "2" -> {
-                    // 心跳包的处理已移至onMessage回调中
-                    // 这里不再需要额外处理
-                }
-
-                // 消息通知: 42["msg",{消息内容}]
-                text.startsWith("42[\"msg\",") -> {
-                    val messageContent = text.substringAfter("42[\"msg\",").substringBeforeLast("]")
-                    val message = Json.decodeFromString<CsMsg>(messageContent)
-                    LogUtils.d(TAG, "收到消息通知(42): id=${message.id}, type=${message.type}")
-                    onMessageReceived?.invoke(message)
-                }
-
-                // 消息通知: 42/cs,["msg",{消息内容}]
-                text.startsWith("42/cs,[\"msg\",") -> {
-                    val messageContent =
-                        text.substringAfter("42/cs,[\"msg\",").substringBeforeLast("]")
-                    val message = Json.decodeFromString<CsMsg>(messageContent)
-                    LogUtils.d(TAG, "收到消息通知(42/cs): id=${message.id}, type=${message.type}")
-                    onMessageReceived?.invoke(message)
-                }
-
-                // 连接成功消息: 42/cs,["message","连接成功"]
-                text.contains("42/cs,[\"message\",\"连接成功\"]") -> {
-                    LogUtils.d(TAG, "收到连接成功消息: $text")
-                    updateConnectionState(WebSocketConnectionState.Connected)
-                }
-
-                // 其他连接状态消息
-                text.startsWith("42/cs,[\"message\",") -> {
-                    LogUtils.d(TAG, "收到连接状态消息: $text")
-                    // 其他连接状态消息，已经在上一个条件处理了连接成功的情况
-                }
-
-                else -> {
-                    LogUtils.d(TAG, "收到未处理的消息类型: $text")
-                }
+                WebSocketEvent.Ignored -> Unit
             }
-        } catch (e: Exception) {
-            LogUtils.e(TAG, "解析WebSocket消息失败", e)
+        }
+
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(code, null)
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            val isCurrent = synchronized(lock) {
+                if (!isCurrentConnectionLocked(connection.generation)) return@synchronized false
+                this@WebSocketManager.webSocket = null
+                true
+            }
+            if (!isCurrent) return
+
+            LogUtils.d(TAG, "WebSocket 连接关闭: code=$code")
+            if (updateConnectionStateIfCurrent(
+                    connection.generation,
+                    WebSocketConnectionState.Disconnected,
+                )
+            ) {
+                scheduleReconnect(connection.generation)
+            }
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            if (!isCurrentConnection(connection.generation)) return
+
+            LogUtils.e(
+                TAG,
+                "WebSocket 连接失败: httpCode=${response?.code ?: "none"}",
+                t,
+            )
+            handleConnectionFailure(connection.generation, t)
         }
     }
 
-    /**
-     * 发送消息
-     *
-     * @param sessionId 会话ID
-     * @param content 消息内容
-     * @param type 消息类型
-     * @return 是否发送成功
-     * @author Joker.X
-     */
+    private fun handleConnectionFailure(generation: Long, error: Throwable) {
+        val isCurrent = synchronized(lock) {
+            if (!isCurrentConnectionLocked(generation)) return@synchronized false
+            webSocket = null
+            true
+        }
+        if (!isCurrent) return
+
+        if (updateConnectionStateIfCurrent(
+                generation,
+                WebSocketConnectionState.Error(error.message ?: "连接错误"),
+            )
+        ) {
+            scheduleReconnect(generation)
+        }
+    }
+
+    private fun scheduleReconnect(failedGeneration: Long) {
+        val reconnect = synchronized(lock) {
+            val scope = connectionScope
+            if (!isCurrentConnectionLocked(failedGeneration) ||
+                scope?.isActive != true ||
+                retryCount >= reconnectDelaysMillis.size ||
+                reconnectJob?.isActive == true
+            ) {
+                return
+            }
+
+            val delayMillis = reconnectDelaysMillis[retryCount]
+            retryCount++
+            ReconnectAttempt(
+                scope = scope,
+                failedGeneration = failedGeneration,
+                attempt = retryCount,
+                delayMillis = delayMillis,
+            )
+        }
+
+        LogUtils.d(
+            TAG,
+            "WebSocket 将在 ${reconnect.delayMillis}ms 后进行第 ${reconnect.attempt} 次重连",
+        )
+
+        val job = reconnect.scope.launch(start = CoroutineStart.LAZY) {
+            delay(reconnect.delayMillis)
+            val shouldReconnect = synchronized(lock) {
+                reconnectJob = null
+                isCurrentConnectionLocked(reconnect.failedGeneration)
+            }
+            if (shouldReconnect) {
+                openConnection()
+            }
+        }
+
+        val shouldStart = synchronized(lock) {
+            if (isCurrentConnectionLocked(reconnect.failedGeneration)) {
+                reconnectJob = job
+                true
+            } else {
+                false
+            }
+        }
+        if (shouldStart) job.start() else job.cancel()
+    }
+
     fun sendMessage(sessionId: Long, content: String, type: String = "text"): Boolean {
         if (_connectionState.value != WebSocketConnectionState.Connected) {
-            LogUtils.e(TAG, "发送消息失败: WebSocket未连接")
+            LogUtils.e(TAG, "发送消息失败: WebSocket 未连接")
             return false
         }
 
-        // 构建发送消息
-        val sendMessage =
-            """42/cs,["send",{"sessionId":$sessionId,"content":{"type":"$type","data":"$content"}}]"""
-
-        LogUtils.d(TAG, "发送消息: ${sendMessage.take(50)}...")
-
-        // 通过WebSocket发送
-        val success = webSocket?.send(sendMessage) ?: false
+        val frame = WebSocketProtocol.sendMessageFrame(sessionId, content, type)
+        val success = webSocket?.send(frame) ?: false
         if (!success) {
-            LogUtils.e(TAG, "消息发送失败")
+            LogUtils.e(TAG, "消息发送失败: sessionId=$sessionId")
             updateConnectionState(WebSocketConnectionState.Error("消息发送失败"))
         } else {
-            LogUtils.d(TAG, "消息发送成功")
+            LogUtils.d(TAG, "消息发送成功: sessionId=$sessionId")
         }
-
         return success
     }
 
-    /**
-     * 断开WebSocket连接
-     *
-     * @author Joker.X
-     */
     fun disconnect() {
-        LogUtils.d(TAG, "断开WebSocket连接")
-        webSocket?.close(1000, "正常关闭")
-        webSocket = null
-        webSocketClient?.dispatcher?.executorService?.shutdown()
-        webSocketClient = null
-        updateConnectionState(WebSocketConnectionState.Disconnected)
+        closeConnection(dispose = false)
     }
 
-    /**
-     * 更新连接状态
-     *
-     * @param state 新的连接状态
-     * @author Joker.X
-     */
+    fun dispose() {
+        closeConnection(dispose = true)
+        (webSocketFactory as? OkHttpClient)?.let { client ->
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+        }
+    }
+
+    private fun closeConnection(dispose: Boolean) {
+        val socket = synchronized(lock) {
+            if (dispose) disposed = true
+            connectionRequested = false
+            connectionGeneration++
+            retryCount = 0
+            reconnectJob?.cancel()
+            reconnectJob = null
+            token = null
+            connectionScope = null
+            if (dispose) onMessageReceived = null
+            _connectionState.value = WebSocketConnectionState.Disconnected
+            webSocket.also { webSocket = null }
+        }
+        socket?.close(1000, "normal closure")
+        LogUtils.d(TAG, "WebSocket 已主动断开")
+    }
+
+    fun isConnected(): Boolean = _connectionState.value == WebSocketConnectionState.Connected
+
+    private fun isCurrentConnection(generation: Long): Boolean = synchronized(lock) {
+        isCurrentConnectionLocked(generation)
+    }
+
+    private fun isCurrentConnectionLocked(generation: Long): Boolean =
+        connectionRequested && !disposed && generation == connectionGeneration
+
     private fun updateConnectionState(state: WebSocketConnectionState) {
-        _connectionState.value = state
-        onConnectionStateChanged?.invoke(state)
+        synchronized(lock) {
+            _connectionState.value = state
+        }
     }
 
-    /**
-     * 获取当前连接状态
-     *
-     * @return 是否已连接
-     * @author Joker.X
-     */
-    fun isConnected(): Boolean {
-        return _connectionState.value == WebSocketConnectionState.Connected
+    private fun updateConnectionStateIfCurrent(generation: Long, state: WebSocketConnectionState): Boolean =
+        synchronized(lock) {
+            if (!isCurrentConnectionLocked(generation)) return@synchronized false
+            _connectionState.value = state
+            true
+        }
+
+    private data class ConnectionAttempt(val generation: Long, val token: String)
+
+    private data class ReconnectAttempt(
+        val scope: CoroutineScope,
+        val failedGeneration: Long,
+        val attempt: Int,
+        val delayMillis: Long,
+    )
+
+    companion object {
+        private fun createWebSocketClient(): OkHttpClient = OkHttpClient.Builder()
+            .pingInterval(0, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .build()
     }
 }
