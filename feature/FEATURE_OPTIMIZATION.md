@@ -450,7 +450,7 @@ data.subTitle
 实施结果：
 
 - 新增统一的 URL 策略，按解析后的 Scheme、Host、用户信息和端口分类；只有代码中明确列出的 HTTPS Host 可以在应用内加载，未列入许可名单的合法 HTTPS 链接交给系统浏览器。
-- 应用内 WebView 默认关闭 JavaScript 和 DOM Storage，禁止文件、Content URI、混合内容、自动开窗和自动媒体播放；当前没有 Host 获得 JavaScript 权限。
+- 应用内 WebView 默认关闭 JavaScript 和 DOM Storage，禁止文件、Content URI、混合内容、自动开窗和自动媒体播放；仅精确 Host `gitee.com` 因 WebView 入口依赖同域 WAF 校验而开启 JavaScript 和 DOM Storage。
 - HTTP、`javascript:`、`file:`、`content:`、`data:`、`intent:`、异常端口、用户信息伪装和未知 Scheme 会被拦截；系统 Scheme 只允许 `tel:` 和 `mailto:`。
 - 服务端返回的贡献者网址不再进入应用内 WebView，统一交给系统应用处理。
 - 外部打开逻辑移到 UI 层，`WebViewModel` 不再持有 `Context`；打开失败使用项目日志和中英文用户提示。

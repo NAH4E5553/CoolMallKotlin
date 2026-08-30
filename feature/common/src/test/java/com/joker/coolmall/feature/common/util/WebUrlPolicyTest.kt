@@ -11,7 +11,6 @@ class WebUrlPolicyTest {
             "https://coil-kt.github.io/coil/compose/",
             "https://coolmall.apifox.cn",
             "https://developer.android.com/jetpack/compose",
-            "https://gitee.com/Joker-x-dev/CoolMallKotlin",
             "https://github.com/Joker-x-dev/CoolMallKotlin",
             "https://opendocs.alipay.com/open/54/104509",
             "https://square.github.io/okhttp/",
@@ -24,6 +23,14 @@ class WebUrlPolicyTest {
                 WebUrlPolicy.classify(url),
             )
         }
+    }
+
+    @Test
+    fun `gitee opens in app with javascript for webview verification`() {
+        assertEquals(
+            WebUrlDestination.InApp(javaScriptEnabled = true),
+            WebUrlPolicy.classify("https://gitee.com/Joker-x-dev/CoolMallKotlin"),
+        )
     }
 
     @Test

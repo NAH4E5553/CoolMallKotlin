@@ -39,8 +39,8 @@ internal object WebUrlPolicy {
         "www.pgyer.com",
     )
 
-    // 默认不向网页授予脚本执行能力。后续只能在验证确有业务需要后添加精确 Host。
-    private val javaScriptHosts = emptySet<String>()
+    // Gitee 的 WebView 入口依赖同域 JavaScript 完成 WAF 校验，其余页面默认不授予脚本执行能力。
+    private val javaScriptHosts = setOf("gitee.com")
 
     /**
      * 根据 Scheme、Host、用户信息和端口决定 URL 的处理方式。
