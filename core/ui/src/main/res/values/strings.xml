@@ -5,6 +5,8 @@
     <string name="empty_cart_btn">去逛逛</string>
     <string name="empty_data">暂无数据</string>
     <string name="empty_data_subtitle">暂时没有相关内容</string>
+    <string name="empty_options">暂无可选项</string>
+    <string name="empty_options_subtitle">请稍后重试</string>
     <string name="empty_error">加载失败</string>
     <string name="empty_error_subtitle">页面加载出现了问题</string>
     <string name="empty_network">网络连接失败</string>

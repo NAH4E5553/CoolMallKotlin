@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.activity.compose.BackHandler
@@ -28,8 +30,7 @@ import com.joker.coolmall.core.model.entity.Cart
 import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.entity.Order
 import com.joker.coolmall.core.model.preview.previewOrder
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderRoutes
+import com.joker.coolmall.core.ui.R as CoreUiR
 import com.joker.coolmall.core.ui.component.address.AddressCard
 import com.joker.coolmall.core.ui.component.dialog.WeDialog
 import com.joker.coolmall.core.ui.component.goods.OrderGoodsCard
@@ -46,7 +47,8 @@ import com.joker.coolmall.core.ui.component.title.TitleWithLine
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.component.OrderButtons
 import com.joker.coolmall.feature.order.viewmodel.OrderDetailViewModel
-import com.joker.coolmall.core.ui.R as CoreUiR
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderRoutes
 
 /**
  * 订单详情路由
@@ -61,7 +63,7 @@ internal fun OrderDetailRoute(
     viewModel: OrderDetailViewModel = hiltViewModel<OrderDetailViewModel, OrderDetailViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // UI状态
@@ -108,7 +110,7 @@ internal fun OrderDetailRoute(
         onCancelConfirm = viewModel::confirmCancelOrder,
         onCancelRetry = viewModel::loadCancelReasons,
         onConfirmDialogDismiss = viewModel::hideConfirmReceiveDialog,
-        onConfirmReceive = viewModel::confirmReceiveOrder
+        onConfirmReceive = viewModel::confirmReceiveOrder,
     )
 
     // 拦截系统返回按钮，使用自定义返回逻辑
@@ -179,7 +181,7 @@ internal fun OrderDetailScreen(
     onCancelConfirm: () -> Unit = {},
     onCancelRetry: () -> Unit = {},
     onConfirmDialogDismiss: () -> Unit = {},
-    onConfirmReceive: () -> Unit = {}
+    onConfirmReceive: () -> Unit = {},
 ) {
     // 根据订单状态获取对应的标题资源ID
     val titleResId = if (uiState is BaseNetWorkUiState.Success) {
@@ -216,7 +218,7 @@ internal fun OrderDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(SpacePaddingMedium)
-                            .navigationBarsPadding()
+                            .navigationBarsPadding(),
                     ) {
                         OrderButtons(
                             order = uiState.data,
@@ -231,15 +233,15 @@ internal fun OrderDetailScreen(
                     }
                 }
             }
-        }
+        },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { order ->
             OrderDetailContentView(
                 data = order,
-                cartList = cartList
+                cartList = cartList,
             )
         }
     }
@@ -254,7 +256,7 @@ internal fun OrderDetailScreen(
         onItemSelected = onCancelReasonSelected,
         onConfirm = { onCancelConfirm() },
         onRetry = onCancelRetry,
-        onExpanded = onCancelModalExpanded
+        onExpanded = onCancelModalExpanded,
     )
 
     // 确认收货弹窗
@@ -266,7 +268,7 @@ internal fun OrderDetailScreen(
             cancelText = stringResource(R.string.cancel),
             onOk = onConfirmReceive,
             onCancel = onConfirmDialogDismiss,
-            onDismiss = onConfirmDialogDismiss
+            onDismiss = onConfirmDialogDismiss,
         )
     }
 
@@ -277,7 +279,7 @@ internal fun OrderDetailScreen(
         buttonText = stringResource(R.string.rebuy),
         cartList = cartList,
         onDismiss = onRebuyModalDismiss,
-        onItemButtonClick = onRebuyGoodsClick
+        onItemButtonClick = onRebuyGoodsClick,
     )
 
     // 商品评论弹窗
@@ -287,7 +289,7 @@ internal fun OrderDetailScreen(
         buttonText = stringResource(R.string.go_to_comment),
         cartList = cartList,
         onDismiss = onCommentModalDismiss,
-        onItemButtonClick = onCommentGoodsClick
+        onItemButtonClick = onCommentGoodsClick,
     )
 }
 
@@ -299,16 +301,17 @@ internal fun OrderDetailScreen(
  * @author Joker.X
  */
 @Composable
-private fun OrderDetailContentView(
-    data: Order,
-    cartList: List<Cart> = emptyList()
-) {
+private fun OrderDetailContentView(data: Order, cartList: List<Cart> = emptyList()) {
     VerticalList(
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
         AddressCard(
-            address = data.address!!,
-            onClick = { /* 地址点击回调 */ }
+            address = data.address,
+            onClick = {},
+            emptyTitle = R.string.order_address_missing,
+            emptyDescription = R.string.order_address_missing_hint,
+            showEmptyArrow = false,
+            enabled = false,
         )
 
         // 订单商品卡片
@@ -317,7 +320,7 @@ private fun OrderDetailContentView(
                 data = cart,
                 enableQuantityStepper = false, // 订单详情页面不需要调整数量
                 onGoodsClick = { /* 商品点击事件 */ },
-                onSpecClick = { /* 规格点击事件 */ }
+                onSpecClick = { /* 规格点击事件 */ },
             )
         }
 
@@ -328,7 +331,7 @@ private fun OrderDetailContentView(
                 showArrow = false,
                 leadingContent = {
                     TitleWithLine(text = stringResource(R.string.price_detail))
-                }
+                },
             )
 
             AppListItem(
@@ -336,13 +339,14 @@ private fun OrderDetailContentView(
                 leadingIcon = R.drawable.ic_shop,
                 trailingContent = {
                     PriceText(
-                        data.price, integerTextSize = TextSize.BODY_LARGE,
+                        data.price,
+                        integerTextSize = TextSize.BODY_LARGE,
                         decimalTextSize = TextSize.BODY_SMALL,
                         symbolTextSize = TextSize.BODY_SMALL,
-                        type = TextType.PRIMARY
+                        type = TextType.PRIMARY,
                     )
                 },
-                showArrow = false
+                showArrow = false,
             )
 
             AppListItem(
@@ -352,12 +356,13 @@ private fun OrderDetailContentView(
                 showArrow = false,
                 trailingContent = {
                     PriceText(
-                        data.discountPrice, integerTextSize = TextSize.BODY_LARGE,
+                        data.discountPrice,
+                        integerTextSize = TextSize.BODY_LARGE,
                         decimalTextSize = TextSize.BODY_SMALL,
-                        symbolTextSize = TextSize.BODY_SMALL
+                        symbolTextSize = TextSize.BODY_SMALL,
                     )
                 },
-                onClick = { /* 选择优惠券 */ }
+                onClick = { /* 选择优惠券 */ },
             )
 
             AppListItem(
@@ -365,14 +370,15 @@ private fun OrderDetailContentView(
                 leadingIcon = R.drawable.ic_money,
                 trailingContent = {
                     PriceText(
-                        data.price - data.discountPrice, integerTextSize = TextSize.BODY_LARGE,
+                        data.price - data.discountPrice,
+                        integerTextSize = TextSize.BODY_LARGE,
                         decimalTextSize = TextSize.BODY_SMALL,
                         symbolTextSize = TextSize.BODY_SMALL,
-                        type = TextType.PRIMARY
+                        type = TextType.PRIMARY,
                     )
                 },
                 showArrow = false,
-                showDivider = false
+                showDivider = false,
             )
         }
 
@@ -384,7 +390,7 @@ private fun OrderDetailContentView(
                     showArrow = false,
                     leadingContent = {
                         TitleWithLine(text = stringResource(R.string.refund_info))
-                    }
+                    },
                 )
 
                 AppListItem(
@@ -395,10 +401,10 @@ private fun OrderDetailContentView(
                             integerTextSize = TextSize.BODY_LARGE,
                             decimalTextSize = TextSize.BODY_SMALL,
                             symbolTextSize = TextSize.BODY_SMALL,
-                            type = TextType.PRIMARY
+                            type = TextType.PRIMARY,
                         )
                     },
-                    showArrow = false
+                    showArrow = false,
                 )
 
                 AppListItem(
@@ -409,13 +415,13 @@ private fun OrderDetailContentView(
                         1 -> stringResource(R.string.refund_status_refunded)
                         2 -> stringResource(R.string.refund_status_rejected)
                         else -> stringResource(R.string.refund_status_unknown)
-                    }
+                    },
                 )
 
                 AppListItem(
                     title = stringResource(R.string.refund_reason),
                     showArrow = false,
-                    trailingText = refund.reason ?: stringResource(R.string.none)
+                    trailingText = refund.reason ?: stringResource(R.string.none),
                 )
 
                 if (refund.status == 2) {
@@ -423,14 +429,14 @@ private fun OrderDetailContentView(
                         title = stringResource(R.string.refund_reject_reason),
                         showArrow = false,
                         trailingText = refund.refuseReason ?: stringResource(R.string.none),
-                        showDivider = false
+                        showDivider = false,
                     )
                 } else {
                     AppListItem(
                         title = stringResource(R.string.refund_apply_time),
                         showArrow = false,
                         trailingText = refund.applyTime ?: stringResource(R.string.none),
-                        showDivider = false
+                        showDivider = false,
                     )
                 }
             }
@@ -443,7 +449,7 @@ private fun OrderDetailContentView(
                 showArrow = false,
                 leadingContent = {
                     TitleWithLine(text = stringResource(R.string.order_info))
-                }
+                },
             )
 
             AppListItem(
@@ -452,7 +458,7 @@ private fun OrderDetailContentView(
                     AppText(
                         text = data.orderNum,
                         type = TextType.SECONDARY,
-                        size = TextSize.BODY_MEDIUM
+                        size = TextSize.BODY_MEDIUM,
                     )
                     SpaceHorizontalSmall()
 
@@ -460,38 +466,37 @@ private fun OrderDetailContentView(
                         text = stringResource(R.string.copy),
                         type = TextType.LINK,
                         size = TextSize.BODY_MEDIUM,
-                        onClick = { /* 复制订单号 */ }
+                        onClick = { /* 复制订单号 */ },
                     )
                     SpaceHorizontalXSmall()
                 },
-                showArrow = false
+                showArrow = false,
             )
 
             AppListItem(
                 title = stringResource(R.string.payment_method),
                 showArrow = false,
-                trailingText = stringResource(R.string.wechat)
+                trailingText = stringResource(R.string.wechat),
             )
 
             AppListItem(
                 title = stringResource(R.string.payment_time),
                 showArrow = false,
-                trailingText = data.payTime ?: stringResource(R.string.unpaid)
+                trailingText = data.payTime ?: stringResource(R.string.unpaid),
             )
 
             AppListItem(
                 title = stringResource(R.string.order_time),
                 showArrow = false,
-                trailingText = data.createTime
+                trailingText = data.createTime,
             )
 
             AppListItem(
                 title = stringResource(R.string.order_remark),
                 showArrow = false,
-                trailingText = data.remark ?: stringResource(R.string.none)
+                trailingText = data.remark ?: stringResource(R.string.none),
             )
         }
-
     }
 }
 
@@ -506,8 +511,8 @@ internal fun OrderDetailScreenPreview() {
     AppTheme {
         OrderDetailScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = previewOrder
-            )
+                data = previewOrder,
+            ),
         )
     }
 }
@@ -523,8 +528,8 @@ internal fun OrderDetailScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         OrderDetailScreen(
             uiState = BaseNetWorkUiState.Success(
-                data = previewOrder
-            )
+                data = previewOrder,
+            ),
         )
     }
 }

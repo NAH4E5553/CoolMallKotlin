@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.core.ui.component.modal
 
 import androidx.compose.foundation.background
@@ -43,6 +45,7 @@ import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.ui.R
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.button.ButtonSize
+import com.joker.coolmall.core.ui.component.empty.Empty
 import com.joker.coolmall.core.ui.component.empty.EmptyNetwork
 import com.joker.coolmall.core.ui.component.loading.PageLoading
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkView
@@ -77,13 +80,13 @@ fun DictSelectModal(
     onItemSelected: (DictItem) -> Unit = {},
     onConfirm: (DictItem?) -> Unit = {},
     onRetry: () -> Unit = {},
-    onExpanded: () -> Unit = {}
+    onExpanded: () -> Unit = {},
 ) {
     // 内部选中状态，用于管理用户的选择
     var internalSelectedItem by remember(selectedItem) { mutableStateOf(selectedItem) }
 
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
+        skipPartiallyExpanded = true,
     )
 
     // 监听弹窗展开状态，在完全展开后触发回调
@@ -97,12 +100,20 @@ fun DictSelectModal(
         visible = visible,
         onDismiss = onDismiss,
         title = stringResource(id = title),
-        sheetState = sheetState
+        sheetState = sheetState,
     ) {
         BaseNetWorkView(
             uiState = uiState,
             customLoading = {
                 PageLoading(modifier = Modifier.height(300.dp))
+            },
+            customEmpty = {
+                Empty(
+                    modifier = Modifier.height(300.dp),
+                    message = R.string.empty_options,
+                    subtitle = R.string.empty_options_subtitle,
+                    onRetryClick = onRetry,
+                )
             },
             customError = {
                 EmptyNetwork(modifier = Modifier.height(300.dp), onRetryClick = onRetry)
@@ -118,7 +129,7 @@ fun DictSelectModal(
                 onConfirm = {
                     onConfirm(internalSelectedItem)
                     onDismiss()
-                }
+                },
             )
         }
     }
@@ -140,7 +151,7 @@ private fun DictSelectModalContent(
     dictItems: List<DictItem>,
     selectedItem: DictItem? = null,
     onItemSelected: (DictItem) -> Unit = {},
-    onConfirm: () -> Unit = {}
+    onConfirm: () -> Unit = {},
 ) {
     WrapColumn {
         // 字典项列表
@@ -148,13 +159,13 @@ private fun DictSelectModalContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(SpaceVerticalMedium)
+            verticalArrangement = Arrangement.spacedBy(SpaceVerticalMedium),
         ) {
             items(dictItems) { item ->
                 DictItemRow(
                     item = item,
                     isSelected = selectedItem?.id == item.id,
-                    onItemClick = { onItemSelected(item) }
+                    onItemClick = { onItemSelected(item) },
                 )
             }
         }
@@ -167,7 +178,7 @@ private fun DictSelectModalContent(
             onClick = onConfirm,
             enabled = selectedItem != null,
             size = ButtonSize.MEDIUM,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -183,11 +194,7 @@ private fun DictSelectModalContent(
  * @param onItemClick 点击回调
  */
 @Composable
-private fun DictItemRow(
-    item: DictItem,
-    isSelected: Boolean = false,
-    onItemClick: () -> Unit = {}
-) {
+private fun DictItemRow(item: DictItem, isSelected: Boolean = false, onItemClick: () -> Unit = {}) {
     SpaceBetweenRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -195,14 +202,14 @@ private fun DictItemRow(
             .clickable { onItemClick() }
             .padding(
                 horizontal = SpaceHorizontalMedium,
-                vertical = SpaceVerticalMedium
-            )
+                vertical = SpaceVerticalMedium,
+            ),
     ) {
         StartRow {
             // 单选按钮
             RadioButton(
                 selected = isSelected,
-                onClick = onItemClick
+                onClick = onItemClick,
             )
 
             SpaceHorizontalMedium()
@@ -211,7 +218,7 @@ private fun DictItemRow(
             AppText(
                 text = item.name ?: "",
                 size = TextSize.BODY_LARGE,
-                type = if (isSelected) TextType.PRIMARY else TextType.SECONDARY
+                type = if (isSelected) TextType.PRIMARY else TextType.SECONDARY,
             )
         }
     }
@@ -226,10 +233,7 @@ private fun DictItemRow(
  * @param onClick 点击回调
  */
 @Composable
-private fun RadioButton(
-    selected: Boolean,
-    onClick: () -> Unit = {}
-) {
+private fun RadioButton(selected: Boolean, onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .size(20.dp)
@@ -237,14 +241,14 @@ private fun RadioButton(
             .border(
                 width = 2.dp,
                 color = if (selected) Primary else MaterialTheme.colorScheme.outline,
-                shape = CircleShape
+                shape = CircleShape,
             )
             .background(
                 color = if (selected) Primary else Color.Transparent,
-                shape = CircleShape
+                shape = CircleShape,
             )
             .clickable { onClick() },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         if (selected) {
             Box(
@@ -252,8 +256,8 @@ private fun RadioButton(
                     .size(8.dp)
                     .background(
                         color = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape
-                    )
+                        shape = CircleShape,
+                    ),
             )
         }
     }
@@ -272,22 +276,22 @@ private fun DictSelectModalPreview() {
                 typeId = 1,
                 parentId = null,
                 name = "不想要了",
-                value = 1
+                value = 1,
             ),
             DictItem(
                 id = 2,
                 typeId = 1,
                 parentId = null,
                 name = "商品错选/多选",
-                value = 2
+                value = 2,
             ),
             DictItem(
                 id = 3,
                 typeId = 1,
                 parentId = null,
                 name = "商品无货",
-                value = 3
-            )
+                value = 3,
+            ),
         )
 
         Column {
@@ -295,7 +299,7 @@ private fun DictSelectModalPreview() {
                 dictItems = sampleDictItems,
                 selectedItem = sampleDictItems[0],
                 onItemSelected = {},
-                onConfirm = {}
+                onConfirm = {},
             )
         }
     }

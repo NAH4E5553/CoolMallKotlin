@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.core.ui.component.address
 
 import androidx.compose.foundation.background
@@ -50,6 +52,10 @@ import com.joker.coolmall.core.ui.component.text.TextType
  * @param actionSlot 右上角操作区域插槽，可根据场景定制
  * @param showBottomBar 是否显示底部栏，包含联系人和标签
  * @param addressSelected 在订单确认页标记为已选中的地址
+ * @param emptyTitle 地址为空时的标题资源
+ * @param emptyDescription 地址为空时的说明资源
+ * @param showEmptyArrow 地址为空时是否显示操作箭头
+ * @param enabled 是否允许点击卡片
  * @author Joker.X
  */
 @Composable
@@ -59,12 +65,22 @@ fun AddressCard(
     onClick: () -> Unit = {},
     actionSlot: (@Composable () -> Unit)? = null,
     showBottomBar: Boolean = true,
-    addressSelected: Boolean = false
+    addressSelected: Boolean = false,
+    emptyTitle: Int = R.string.address_not_selected,
+    emptyDescription: Int = R.string.address_add_hint,
+    showEmptyArrow: Boolean = true,
+    enabled: Boolean = true,
 ) {
     Card(
         modifier = modifier
             .clip(ShapeMedium)
-            .clickable { onClick() },
+            .then(
+                if (enabled) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         if (address != null) {
             // 有地址数据时显示正常布局
@@ -73,20 +89,20 @@ fun AddressCard(
                 SpaceBetweenRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(SpacePaddingMedium)
+                        .padding(SpacePaddingMedium),
                 ) {
                     Column {
                         // 地址第一行
                         AppText(
                             text = "${address.province}${address.city}${address.district}",
-                            size = TextSize.TITLE_LARGE
+                            size = TextSize.TITLE_LARGE,
                         )
 
                         // 地址第二行
                         AppText(
                             text = address.address,
                             type = TextType.SECONDARY,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     }
 
@@ -108,20 +124,20 @@ fun AddressCard(
                             .fillMaxWidth()
                             .padding(
                                 horizontal = SpaceHorizontalLarge,
-                                vertical = SpaceVerticalMedium
+                                vertical = SpaceVerticalMedium,
                             ),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         AppText(
                             text = address.contact,
-                            type = TextType.SECONDARY
+                            type = TextType.SECONDARY,
                         )
 
                         SpaceHorizontalLarge()
 
                         AppText(
                             text = address.phone,
-                            type = TextType.SECONDARY
+                            type = TextType.SECONDARY,
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -132,7 +148,7 @@ fun AddressCard(
                                 text = stringResource(id = R.string.address_default),
                                 type = TagType.PRIMARY,
                                 size = TagSize.SMALL,
-                                shape = ShapeMedium
+                                shape = ShapeMedium,
                             )
                         }
                     }
@@ -144,13 +160,15 @@ fun AddressCard(
                 SpaceBetweenRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(SpacePaddingMedium)
+                        .padding(SpacePaddingMedium),
                 ) {
                     AppText(
-                        text = stringResource(id = R.string.address_not_selected),
-                        size = TextSize.TITLE_LARGE
+                        text = stringResource(id = emptyTitle),
+                        size = TextSize.TITLE_LARGE,
                     )
-                    ArrowRightIcon()
+                    if (showEmptyArrow) {
+                        ArrowRightIcon()
+                    }
                 }
 
                 WeDivider()
@@ -160,13 +178,13 @@ fun AddressCard(
                         .fillMaxWidth()
                         .padding(
                             horizontal = SpaceHorizontalLarge,
-                            vertical = SpaceVerticalMedium
+                            vertical = SpaceVerticalMedium,
                         ),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AppText(
-                        text = stringResource(id = R.string.address_add_hint),
-                        type = TextType.SECONDARY
+                        text = stringResource(id = emptyDescription),
+                        type = TextType.SECONDARY,
                     )
                 }
             }
@@ -182,22 +200,19 @@ fun AddressCard(
  * @author Joker.X
  */
 @Composable
-fun AddressActionButton(
-    onClick: () -> Unit,
-    iconResId: Int
-) {
+fun AddressActionButton(onClick: () -> Unit, iconResId: Int) {
     Box(
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { onClick() },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         CommonIcon(
             resId = iconResId,
             tint = LocalContentColor.current.copy(alpha = 0.5f),
-            size = 18.dp
+            size = 18.dp,
         )
     }
 }
@@ -220,8 +235,8 @@ private fun AddressCardPreview() {
                 address = "科技园南区T3栋 8楼",
                 contact = "张三",
                 phone = "13800138000",
-                isDefault = true
-            )
+                isDefault = true,
+            ),
         )
     }
 }
@@ -244,9 +259,9 @@ private fun AddressCardOrderConfirmPreview() {
                 address = "南城门广场",
                 contact = "张三",
                 phone = "18888888888",
-                isDefault = true
+                isDefault = true,
             ),
-            addressSelected = true
+            addressSelected = true,
         )
     }
 }
@@ -269,25 +284,25 @@ private fun AddressCardWithActionsPreview() {
                 address = "科技园南区T3栋 8楼",
                 contact = "张三",
                 phone = "13800138000",
-                isDefault = true
+                isDefault = true,
             ),
             actionSlot = {
                 Row(
-                    horizontalArrangement = spacedBy(8.dp)
+                    horizontalArrangement = spacedBy(8.dp),
                 ) {
                     // 模拟编辑按钮
                     AddressActionButton(
                         onClick = { },
-                        iconResId = android.R.drawable.ic_menu_edit
+                        iconResId = android.R.drawable.ic_menu_edit,
                     )
 
                     // 模拟删除按钮
                     AddressActionButton(
                         onClick = { },
-                        iconResId = android.R.drawable.ic_menu_delete
+                        iconResId = android.R.drawable.ic_menu_delete,
                     )
                 }
-            }
+            },
         )
     }
 }
@@ -310,8 +325,8 @@ private fun AddressCardDarkPreview() {
                 address = "科技园南区T3栋 8楼",
                 contact = "张三",
                 phone = "13800138000",
-                isDefault = true
-            )
+                isDefault = true,
+            ),
         )
     }
 }
@@ -327,7 +342,7 @@ private fun AddressCardEmptyPreview() {
     AppTheme {
         AddressCard(
             address = null,
-            onClick = { /* 点击选择地址 */ }
+            onClick = { /* 点击选择地址 */ },
         )
     }
 }
@@ -343,7 +358,7 @@ private fun AddressCardEmptyDarkPreview() {
     AppTheme(darkTheme = true) {
         AddressCard(
             address = null,
-            onClick = { /* 点击选择地址 */ }
+            onClick = { /* 点击选择地址 */ },
         )
     }
 }

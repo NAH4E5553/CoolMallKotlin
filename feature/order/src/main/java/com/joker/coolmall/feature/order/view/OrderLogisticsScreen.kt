@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.compose.foundation.layout.padding
@@ -23,8 +25,6 @@ import com.joker.coolmall.core.model.entity.Logistics
 import com.joker.coolmall.core.model.entity.Order
 import com.joker.coolmall.core.model.preview.previewLogisticsData
 import com.joker.coolmall.core.model.preview.previewOrder
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.ui.component.address.AddressCard
 import com.joker.coolmall.core.ui.component.image.NetWorkImage
 import com.joker.coolmall.core.ui.component.list.AppListItem
@@ -37,6 +37,8 @@ import com.joker.coolmall.core.ui.component.title.TitleWithLine
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.component.LogisticsSteps
 import com.joker.coolmall.feature.order.viewmodel.OrderLogisticsViewModel
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderRoutes
 
 /**
  * 订单物流路由
@@ -51,7 +53,7 @@ internal fun OrderLogisticsRoute(
     viewModel: OrderLogisticsViewModel = hiltViewModel<OrderLogisticsViewModel, OrderLogisticsViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     val uiState by viewModel.uiState.collectAsState() // 订单数据状态
@@ -77,20 +79,20 @@ internal fun OrderLogisticsRoute(
 internal fun OrderLogisticsScreen(
     uiState: BaseNetWorkUiState<Order> = BaseNetWorkUiState.Loading,
     logisticsUiState: Logistics = Logistics(),
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
 ) {
     AppScaffold(
         titleText = stringResource(R.string.order_logistics),
         useLargeTopBar = true,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { order ->
             OrderLogisticsContentView(
                 order = order,
-                logistics = logisticsUiState
+                logistics = logisticsUiState,
             )
         }
     }
@@ -104,15 +106,19 @@ internal fun OrderLogisticsScreen(
  * @author Joker.X
  */
 @Composable
-private fun OrderLogisticsContentView(
-    order: Order,
-    logistics: Logistics
-) {
+private fun OrderLogisticsContentView(order: Order, logistics: Logistics) {
     VerticalList(
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
         // 地址卡片
-        AddressCard(address = order.address)
+        AddressCard(
+            address = order.address,
+            onClick = {},
+            emptyTitle = R.string.order_address_missing,
+            emptyDescription = R.string.order_address_missing_hint,
+            showEmptyArrow = false,
+            enabled = false,
+        )
 
         Card {
             AppListItem(
@@ -124,16 +130,16 @@ private fun OrderLogisticsContentView(
                 trailingContent = {
                     NetWorkImage(
                         model = logistics.logo,
-                        size = 18.dp
+                        size = 18.dp,
                     )
-                }
+                },
             )
 
             // 快递公司信息
             AppListItem(
                 title = stringResource(R.string.express_company),
                 showArrow = false,
-                trailingText = logistics.expName ?: stringResource(R.string.unknown_express)
+                trailingText = logistics.expName ?: stringResource(R.string.unknown_express),
             )
 
             // 物流编号
@@ -143,7 +149,7 @@ private fun OrderLogisticsContentView(
                     AppText(
                         text = logistics.number ?: "",
                         type = TextType.SECONDARY,
-                        size = TextSize.BODY_MEDIUM
+                        size = TextSize.BODY_MEDIUM,
                     )
                     SpaceHorizontalSmall()
 
@@ -151,18 +157,18 @@ private fun OrderLogisticsContentView(
                         text = stringResource(R.string.copy),
                         type = TextType.LINK,
                         size = TextSize.BODY_MEDIUM,
-                        onClick = { /* 复制物流编号 */ }
+                        onClick = { /* 复制物流编号 */ },
                     )
                     SpaceHorizontalXSmall()
                 },
-                showArrow = false
+                showArrow = false,
             )
 
             // 快递员信息
             AppListItem(
                 title = stringResource(R.string.courier),
                 showArrow = false,
-                trailingText = logistics.courier
+                trailingText = logistics.courier,
             )
 
             // 快递员电话
@@ -172,7 +178,7 @@ private fun OrderLogisticsContentView(
                     AppText(
                         text = logistics.courierPhone.toString(),
                         type = TextType.SECONDARY,
-                        size = TextSize.BODY_MEDIUM
+                        size = TextSize.BODY_MEDIUM,
                     )
                     SpaceHorizontalSmall()
 
@@ -180,11 +186,11 @@ private fun OrderLogisticsContentView(
                         text = stringResource(R.string.call),
                         type = TextType.LINK,
                         size = TextSize.BODY_MEDIUM,
-                        onClick = { /* 拨打电话 */ }
+                        onClick = { /* 拨打电话 */ },
                     )
                     SpaceHorizontalXSmall()
                 },
-                showArrow = false
+                showArrow = false,
             )
 
             // 耗时信息
@@ -192,7 +198,7 @@ private fun OrderLogisticsContentView(
                 title = stringResource(R.string.transport_time),
                 showArrow = false,
                 trailingText = logistics.takeTime,
-                showDivider = false
+                showDivider = false,
             )
         }
 
@@ -201,13 +207,13 @@ private fun OrderLogisticsContentView(
             AppListItem(
                 title = "",
                 showArrow = false,
-                leadingContent = { TitleWithLine(text = stringResource(R.string.logistics_track)) }
+                leadingContent = { TitleWithLine(text = stringResource(R.string.logistics_track)) },
             )
 
             // 物流步骤条
             LogisticsSteps(
                 logisticsItems = logistics.list ?: emptyList(),
-                modifier = Modifier.padding(SpacePaddingMedium)
+                modifier = Modifier.padding(SpacePaddingMedium),
             )
         }
     }
@@ -224,7 +230,7 @@ private fun OrderLogisticsScreenPreview() {
     AppTheme {
         OrderLogisticsScreen(
             uiState = BaseNetWorkUiState.Success(previewOrder),
-            logisticsUiState = previewLogisticsData
+            logisticsUiState = previewLogisticsData,
         )
     }
 }
@@ -240,7 +246,7 @@ private fun OrderLogisticsScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         OrderLogisticsScreen(
             uiState = BaseNetWorkUiState.Success(previewOrder),
-            logisticsUiState = previewLogisticsData
+            logisticsUiState = previewLogisticsData,
         )
     }
 }

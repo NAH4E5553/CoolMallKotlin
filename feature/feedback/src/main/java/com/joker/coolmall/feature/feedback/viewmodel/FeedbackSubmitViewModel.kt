@@ -3,6 +3,7 @@ package com.joker.coolmall.feature.feedback.viewmodel
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
+import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.viewmodel.BaseNetWorkViewModel
 import com.joker.coolmall.core.data.repository.CommonRepository
 import com.joker.coolmall.core.data.repository.FeedbackRepository
@@ -12,22 +13,22 @@ import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.request.FeedbackSubmitRequest
 import com.joker.coolmall.core.model.response.DictDataResponse
 import com.joker.coolmall.core.model.response.NetworkResponse
-import com.joker.coolmall.navigation.RefreshResult
-import com.joker.coolmall.navigation.feedback.FeedbackSubmittedResultKey
-import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.feature.feedback.R
+import com.joker.coolmall.navigation.RefreshResult
+import com.joker.coolmall.navigation.feedback.FeedbackSubmittedResultKey
+import com.joker.coolmall.navigation.popBackStackWithResult
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * 提交反馈 ViewModel
@@ -43,7 +44,7 @@ class FeedbackSubmitViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val commonRepository: CommonRepository,
     private val feedbackRepository: FeedbackRepository,
-    private val fileUploadRepository: FileUploadRepository
+    private val fileUploadRepository: FileUploadRepository,
 ) : BaseNetWorkViewModel<DictDataResponse>() {
 
     /**
@@ -134,8 +135,18 @@ class FeedbackSubmitViewModel @Inject constructor(
      * @return 表单是否有效
      * @author Joker.X
      */
-    fun isFormValid(): Boolean {
-        return _selectedFeedbackType.value != null && _content.value.isNotBlank()
+    fun isFormValid(): Boolean = uiState.value is BaseNetWorkUiState.Success &&
+        _selectedFeedbackType.value != null &&
+        _content.value.isNotBlank()
+
+    override fun onRequestSuccess(data: DictDataResponse) {
+        _selectedFeedbackType.value = null
+        _uiState.value = feedbackTypeUiState(data)
+    }
+
+    override fun onRequestError(message: String, exception: Throwable?) {
+        _selectedFeedbackType.value = null
+        super.onRequestError(message, exception)
     }
 
     /**
@@ -208,7 +219,7 @@ class FeedbackSubmitViewModel @Inject constructor(
             contact = _contact.value,
             type = _selectedFeedbackType.value?.value ?: 0,
             content = _content.value,
-            images = _uploadedImageUrls.value.ifEmpty { null }
+            images = _uploadedImageUrls.value.ifEmpty { null },
         )
 
         ResultHandler.handleResultWithData(
@@ -222,7 +233,7 @@ class FeedbackSubmitViewModel @Inject constructor(
                     RefreshResult(refresh = true),
                 )
             },
-            onFinally = { _isSubmitting.value = false }
+            onFinally = { _isSubmitting.value = false },
         )
     }
 
@@ -232,11 +243,9 @@ class FeedbackSubmitViewModel @Inject constructor(
      * @return 字典数据的Flow
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<DictDataResponse>> {
-        return commonRepository.getDictData(
-            DictDataRequest(
-                types = listOf("feedbackType")
-            )
-        )
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<DictDataResponse>> = commonRepository.getDictData(
+        DictDataRequest(
+            types = listOf("feedbackType"),
+        ),
+    )
 }

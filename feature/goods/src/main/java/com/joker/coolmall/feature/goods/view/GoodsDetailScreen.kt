@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.feature.goods.view
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -96,11 +98,7 @@ import com.joker.coolmall.core.model.entity.GoodsSpec
 import com.joker.coolmall.core.model.entity.SelectedGoods
 import com.joker.coolmall.core.model.preview.previewGoods
 import com.joker.coolmall.core.model.preview.previewMyCoupons
-import com.joker.coolmall.navigation.cs.CsNavigator
-import com.joker.coolmall.navigation.goods.GoodsNavigator
-import com.joker.coolmall.navigation.goods.GoodsRoutes
-import com.joker.coolmall.navigation.main.MainNavigator
-import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.core.ui.R as CoreUiR
 import com.joker.coolmall.core.ui.component.button.AppButtonBordered
 import com.joker.coolmall.core.ui.component.button.AppButtonFixed
 import com.joker.coolmall.core.ui.component.button.ButtonShape
@@ -119,11 +117,20 @@ import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.core.ui.component.text.PriceText
 import com.joker.coolmall.core.ui.component.text.TextSize
 import com.joker.coolmall.core.ui.component.title.TitleWithLine
+import com.joker.coolmall.core.util.R as CoreUtilR
 import com.joker.coolmall.feature.goods.R
 import com.joker.coolmall.feature.goods.component.CommentItem
+import com.joker.coolmall.feature.goods.model.CouponTagPresentation
+import com.joker.coolmall.feature.goods.model.resolveGoodsBannerImages
+import com.joker.coolmall.feature.goods.model.resolveGoodsContentImages
+import com.joker.coolmall.feature.goods.model.toCouponTagPresentation
 import com.joker.coolmall.feature.goods.viewmodel.GoodsDetailViewModel
+import com.joker.coolmall.navigation.cs.CsNavigator
+import com.joker.coolmall.navigation.goods.GoodsNavigator
+import com.joker.coolmall.navigation.goods.GoodsRoutes
+import com.joker.coolmall.navigation.main.MainNavigator
+import com.joker.coolmall.navigation.navigateBack
 import kotlinx.coroutines.flow.collectLatest
-import com.joker.coolmall.core.ui.R as CoreUiR
 
 /**
  * 商品详情页面路由入口
@@ -138,7 +145,7 @@ internal fun GoodsDetailRoute(
     viewModel: GoodsDetailViewModel = hiltViewModel<GoodsDetailViewModel, GoodsDetailViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // UI状态
@@ -172,7 +179,7 @@ internal fun GoodsDetailRoute(
         couponModalVisible = couponModalVisible,
         onShowCouponModal = viewModel::showCouponModal,
         onHideCouponModal = viewModel::hideCouponModal,
-        onCouponReceive = viewModel::receiveCoupon
+        onCouponReceive = viewModel::receiveCoupon,
     )
 }
 
@@ -225,12 +232,12 @@ internal fun GoodsDetailScreen(
         contentWindowInsets = ScaffoldDefaults
             .contentWindowInsets
             .exclude(WindowInsets.navigationBars)
-            .exclude(WindowInsets.statusBars)
+            .exclude(WindowInsets.statusBars),
     ) { paddingValues ->
         BaseNetWorkView(
             uiState = uiState,
             padding = paddingValues,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { goodsDetail ->
             GoodsDetailContentView(
                 data = goodsDetail,
@@ -258,7 +265,7 @@ internal fun GoodsDetailScreen(
                 onBuyNow = onBuyNow,
                 onRetry = onSpecRetry,
                 selectedSpec = selectedSpec,
-                onExpanded = onSpecModalExpanded
+                onExpanded = onSpecModalExpanded,
             )
 
             // 优惠券弹出层
@@ -270,7 +277,7 @@ internal fun GoodsDetailScreen(
                     // 根据ID找到对应的优惠券并调用领取方法
                     val coupon = goodsDetail.coupon.find { it.id == couponId }
                     coupon?.let { onCouponReceive(it) }
-                }
+                },
             )
         }
     }
@@ -314,7 +321,7 @@ private fun GoodsDetailContentView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(paddingValues),
     ) {
         // 内容区域
         GoodsDetailContentWithScroll(
@@ -325,7 +332,7 @@ private fun GoodsDetailContentView(
             onTopBarAlphaChanged = { topBarAlpha = it },
             onShowSpecModal = onShowSpecModal,
             onShowCouponModal = onShowCouponModal,
-            onCommentClick = onCommentClick
+            onCommentClick = onCommentClick,
         )
 
         // 导航栏浮动在顶部
@@ -333,7 +340,7 @@ private fun GoodsDetailContentView(
             onShareClick = { /* TODO: 分享功能 */ },
             topBarAlpha = topBarAlpha,
             hasAnimated = hasAnimated,
-            modifier = Modifier.zIndex(1f)
+            modifier = Modifier.zIndex(1f),
         )
 
         // 底部操作栏
@@ -343,7 +350,7 @@ private fun GoodsDetailContentView(
             onBuyNowClick = onShowSpecModal,
             hasAnimated = hasAnimated,
             onCsClick = CsNavigator::toChat,
-            onCartClick = { MainNavigator.toCart(showBackIcon = true) }
+            onCartClick = { MainNavigator.toCart(showBackIcon = true) },
         )
     }
 }
@@ -362,31 +369,32 @@ private fun GoodsDetailTopBar(
     modifier: Modifier = Modifier,
     onShareClick: () -> Unit = {},
     topBarAlpha: Int = 0,
-    hasAnimated: Boolean = false
+    hasAnimated: Boolean = false,
 ) {
     // 按钮缩放动画
     val buttonScale by animateFloatAsState(
         targetValue = if (hasAnimated) 1f else 0f,
         animationSpec = tween(durationMillis = 600),
-        label = "button_scale"
+        label = "button_scale",
     )
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                if (isSystemInDarkTheme())
+                if (isSystemInDarkTheme()) {
                     Color(0, 0, 0, topBarAlpha)
-                else
+                } else {
                     Color(255, 255, 255, topBarAlpha)
+                },
             )
             .statusBarsPadding()
-            .padding(horizontal = SpacePaddingMedium, vertical = SpacePaddingSmall)
+            .padding(horizontal = SpacePaddingMedium, vertical = SpacePaddingSmall),
     ) {
         CircleIconButton(
             icon = com.joker.coolmall.core.designsystem.R.drawable.ic_left,
             onClick = { navigateBack() },
             iconSize = 28.dp,
-            scale = buttonScale
+            scale = buttonScale,
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -394,7 +402,7 @@ private fun GoodsDetailTopBar(
         CircleIconButton(
             icon = R.drawable.ic_share_triangle,
             onClick = onShareClick,
-            scale = buttonScale
+            scale = buttonScale,
         )
     }
 }
@@ -415,7 +423,7 @@ private fun CircleIconButton(
     icon: Int,
     onClick: () -> Unit = {},
     iconSize: Dp = 20.dp,
-    scale: Float = 1f
+    scale: Float = 1f,
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -424,13 +432,13 @@ private fun CircleIconButton(
             .scale(scale)
             .clip(CircleShape)
             .clickable { onClick() }
-            .background(Color.Black.copy(alpha = 0.3f))
+            .background(Color.Black.copy(alpha = 0.3f)),
     ) {
         Icon(
             painter = painterResource(id = icon),
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(iconSize)
+            modifier = Modifier.size(iconSize),
         )
     }
 }
@@ -457,9 +465,11 @@ private fun GoodsDetailContentWithScroll(
     onTopBarAlphaChanged: (Int) -> Unit,
     onShowSpecModal: () -> Unit,
     onShowCouponModal: () -> Unit = {},
-    onCommentClick: () -> Unit = {}
+    onCommentClick: () -> Unit = {},
 ) {
     val lazyListState = rememberLazyListState()
+    val bannerImages = resolveGoodsBannerImages(data.pics, data.mainPic)
+    val contentImages = resolveGoodsContentImages(data.contentPics)
 
     LaunchedEffect(lazyListState) {
         snapshotFlow {
@@ -478,11 +488,11 @@ private fun GoodsDetailContentWithScroll(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        state = lazyListState
+        state = lazyListState,
     ) {
         // 轮播图直接放在顶部，没有状态栏的padding
         item {
-            GoodsBanner(data.pics!!)
+            GoodsBanner(bannerImages)
         }
 
         // 基本信息
@@ -528,14 +538,14 @@ private fun GoodsDetailContentWithScroll(
                     showArrow = false,
                     leadingContent = {
                         TitleWithLine(text = stringResource(id = R.string.goods_detail))
-                    }
+                    },
                 )
             }
         }
 
         // 图文详情
-        data.contentPics!!.forEachIndexed { index, pic ->
-            val isLastItem = index == data.contentPics!!.size - 1
+        contentImages.forEachIndexed { index, pic ->
+            val isLastItem = index == contentImages.lastIndex
             item {
                 NetWorkImage(
                     model = pic,
@@ -549,14 +559,31 @@ private fun GoodsDetailContentWithScroll(
                                 Modifier.clip(
                                     RoundedCornerShape(
                                         bottomStart = RadiusMedium,
-                                        bottomEnd = RadiusMedium
-                                    )
+                                        bottomEnd = RadiusMedium,
+                                    ),
                                 )
                             } else {
                                 Modifier
-                            }
-                        )
+                            },
+                        ),
                 )
+            }
+        }
+
+        if (contentImages.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 160.dp)
+                        .padding(horizontal = SpacePaddingMedium),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppText(
+                        text = stringResource(R.string.goods_content_empty),
+                        type = com.joker.coolmall.core.ui.component.text.TextType.TERTIARY,
+                    )
+                }
             }
         }
 
@@ -575,6 +602,23 @@ private fun GoodsDetailContentWithScroll(
  */
 @Composable
 private fun GoodsBanner(images: List<String>) {
+    if (images.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            CommonIcon(
+                resId = CoreUtilR.drawable.ic_error,
+                size = 48.dp,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            )
+        }
+        return
+    }
+
     // 轮播图数据列表
     val bannerUrls = remember(images) { images }
 
@@ -586,12 +630,12 @@ private fun GoodsBanner(images: List<String>) {
         options = bannerUrls,
         // 设置圆角裁剪
         modifier = Modifier,
-        autoplay = false
+        autoplay = false,
     ) { index, item ->
         // 根据当前页面和模式设置缩放动画
         val animatedScale by animateFloatAsState(
             targetValue = 1f,
-            label = ""
+            label = "",
         )
 
         NetWorkImage(
@@ -599,7 +643,7 @@ private fun GoodsBanner(images: List<String>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .scale(animatedScale)
+                .scale(animatedScale),
         )
     }
 }
@@ -620,19 +664,19 @@ private fun GoodsInfoCard(
     coupons: List<Coupon> = emptyList(),
     selectedSpec: GoodsSpec? = null,
     onShowSpecModal: () -> Unit,
-    onShowCouponModal: () -> Unit = {}
+    onShowCouponModal: () -> Unit = {},
 ) {
     AppCard {
         // 价格和已售标签行
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // 价格 - 如果有选中规格则显示规格价格，否则显示商品原价
             PriceText(
                 selectedSpec?.price ?: data.price,
-                integerTextSize = TextSize.DISPLAY_LARGE
+                integerTextSize = TextSize.DISPLAY_LARGE,
             )
 
             // 已售标签
@@ -650,19 +694,19 @@ private fun GoodsInfoCard(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
 
         SpaceVerticalXSmall()
 
-        data.subTitle.let {
+        data.subTitle?.takeIf(String::isNotBlank)?.let { subTitle ->
             // 副标题
             Text(
-                text = data.subTitle!!,
+                text = subTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             SpaceVerticalMedium()
         }
@@ -670,7 +714,7 @@ private fun GoodsInfoCard(
         // 规格选择
         SpecSelection(
             selectedSpec = selectedSpec,
-            onClick = onShowSpecModal
+            onClick = onShowSpecModal,
         )
     }
 }
@@ -688,14 +732,14 @@ private fun SoldCountTag(count: Int) {
         modifier = Modifier
             .background(
                 color = Primary,
-                shape = ShapeCircle
+                shape = ShapeCircle,
             )
-            .padding(horizontal = SpacePaddingSmall, vertical = SpacePaddingXSmall)
+            .padding(horizontal = SpacePaddingSmall, vertical = SpacePaddingXSmall),
     ) {
         Text(
             text = stringResource(R.string.sold_count, count),
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White
+            color = Color.White,
         )
     }
 }
@@ -711,16 +755,13 @@ private fun SoldCountTag(count: Int) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CouponList(
-    coupons: List<Coupon> = emptyList(),
-    onShowCouponModal: () -> Unit = {}
-) {
+private fun CouponList(coupons: List<Coupon> = emptyList(), onShowCouponModal: () -> Unit = {}) {
     if (coupons.isNotEmpty()) {
         SpaceVerticalSmall()
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(SpaceHorizontalSmall),
-            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall)
+            verticalArrangement = Arrangement.spacedBy(SpaceVerticalSmall),
         ) {
             coupons.forEach { coupon -> CouponTag(coupon, onShowCouponModal) }
         }
@@ -735,36 +776,42 @@ private fun CouponList(
  * @author Joker.X
  */
 @Composable
-private fun CouponTag(
-    coupon: Coupon,
-    onShowCouponModal: () -> Unit = {}
-) {
+private fun CouponTag(coupon: Coupon, onShowCouponModal: () -> Unit = {}) {
+    val presentation = coupon.toCouponTagPresentation()
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .border(
                 width = SpaceDivider,
                 color = ColorDanger,
-                shape = RoundedCornerShape(SpaceVerticalXSmall)
+                shape = RoundedCornerShape(SpaceVerticalXSmall),
             )
             .clickable { onShowCouponModal() }
-            .padding(horizontal = SpacePaddingSmall, vertical = SpaceVerticalXSmall)
+            .padding(horizontal = SpacePaddingSmall, vertical = SpaceVerticalXSmall),
     ) {
         Icon(
             painter = painterResource(id = CoreUiR.drawable.ic_coupon),
             contentDescription = null,
             tint = ColorDanger,
-            modifier = Modifier.size(SpaceVerticalMedium)
+            modifier = Modifier.size(SpaceVerticalMedium),
         )
         Spacer(modifier = Modifier.width(SpaceVerticalXSmall))
         Text(
-            text = stringResource(
-                R.string.coupon_text,
-                coupon.condition!!.fullAmount.toInt(),
-                coupon.amount.toInt()
-            ),
+            text = when (presentation) {
+                is CouponTagPresentation.Threshold -> stringResource(
+                    R.string.coupon_text,
+                    presentation.fullAmount,
+                    presentation.discountAmount,
+                )
+
+                is CouponTagPresentation.NoThreshold -> stringResource(
+                    R.string.coupon_no_threshold_text,
+                    presentation.discountAmount,
+                )
+            },
             style = MaterialTheme.typography.labelSmall,
-            color = ColorDanger
+            color = ColorDanger,
         )
     }
 }
@@ -777,10 +824,7 @@ private fun CouponTag(
  * @author Joker.X
  */
 @Composable
-private fun SpecSelection(
-    selectedSpec: GoodsSpec? = null,
-    onClick: () -> Unit
-) {
+private fun SpecSelection(selectedSpec: GoodsSpec? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -788,21 +832,21 @@ private fun SpecSelection(
             .border(
                 width = 1.2.dp,
                 color = MaterialTheme.colorScheme.outline,
-                shape = ShapeSmall
+                shape = ShapeSmall,
             )
             .clickable { onClick() }
             .padding(SpacePaddingMedium),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_cube),
                 contentDescription = stringResource(R.string.spec),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(20.dp),
             )
 
             SpaceHorizontalXSmall()
@@ -815,14 +859,14 @@ private fun SpecSelection(
                     stringResource(R.string.select_spec)
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
             )
         }
 
         ArrowRightIcon(
             modifier = Modifier.size(SpaceVerticalLarge),
             size = 16.dp,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
     }
 }
@@ -835,10 +879,7 @@ private fun SpecSelection(
  * @author Joker.X
  */
 @Composable
-private fun GoodsCommentsCard(
-    comments: List<Comment>,
-    onCommentClick: () -> Unit = {}
-) {
+private fun GoodsCommentsCard(comments: List<Comment>, onCommentClick: () -> Unit = {}) {
     Card {
         Column {
             AppListItem(
@@ -847,13 +888,13 @@ private fun GoodsCommentsCard(
                 leadingContent = {
                     TitleWithLine(text = stringResource(R.string.goods_reviews))
                 },
-                onClick = onCommentClick
+                onClick = onCommentClick,
             )
 
             comments.forEachIndexed { index, comment ->
                 CommentItem(
                     comment = comment,
-                    onClick = onCommentClick
+                    onClick = onCommentClick,
                 )
                 // 添加分割线，最后一个评论项不添加
                 if (index < comments.size - 1) {
@@ -879,20 +920,20 @@ private fun GoodsDeliveryCard() {
             showArrow = false,
             leadingContent = {
                 TitleWithLine(text = stringResource(R.string.shipping_and_service))
-            }
+            },
         )
 
         AppListItem(
             title = stringResource(R.string.shipping),
             showArrow = false,
-            trailingText = stringResource(R.string.shipping_location)
+            trailingText = stringResource(R.string.shipping_location),
         )
 
         AppListItem(
             title = stringResource(R.string.service),
             showArrow = false,
             showDivider = false,
-            trailingText = stringResource(R.string.service_details)
+            trailingText = stringResource(R.string.service_details),
         )
     }
 }
@@ -915,20 +956,20 @@ private fun GoodsActionBar(
     onBuyNowClick: () -> Unit = {},
     hasAnimated: Boolean = false,
     onCsClick: () -> Unit = {},
-    onCartClick: () -> Unit = {}
+    onCartClick: () -> Unit = {},
 ) {
     // 底部操作栏从底部升起的动画
     val bottomBarOffset by animateOffsetAsState(
         targetValue = if (hasAnimated) Offset(0f, 0f) else Offset(0f, 200f),
         animationSpec = tween(durationMillis = 800),
-        label = "bottom_bar_offset"
+        label = "bottom_bar_offset",
     )
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .then(modifier)
             .offset { IntOffset(bottomBarOffset.x.toInt(), bottomBarOffset.y.toInt()) },
-        shadowElevation = 4.dp
+        shadowElevation = 4.dp,
     ) {
         SpaceBetweenRow(
             modifier = modifier
@@ -937,7 +978,7 @@ private fun GoodsActionBar(
                 .navigationBarsPadding(),
         ) {
             Row(
-                modifier = Modifier.padding(start = SpaceHorizontalSmall)
+                modifier = Modifier.padding(start = SpaceHorizontalSmall),
             ) {
                 // 客服按钮
                 Column(
@@ -947,16 +988,16 @@ private fun GoodsActionBar(
                         .width(40.dp)
                         .clip(ShapeSmall)
                         .clickable { onCsClick() }
-                        .padding(vertical = SpaceVerticalXSmall)
+                        .padding(vertical = SpaceVerticalXSmall),
                 ) {
                     CommonIcon(
                         resId = R.drawable.ic_customer_service,
-                        size = 20.dp
+                        size = 20.dp,
                     )
 
                     AppText(
                         text = stringResource(R.string.customer_service),
-                        size = TextSize.BODY_SMALL
+                        size = TextSize.BODY_SMALL,
                     )
                 }
 
@@ -967,21 +1008,21 @@ private fun GoodsActionBar(
                         .width(40.dp)
                         .clip(ShapeSmall)
                         .clickable { onCartClick() }
-                        .padding(vertical = SpaceVerticalXSmall)
+                        .padding(vertical = SpaceVerticalXSmall),
                 ) {
                     CommonIcon(
                         resId = R.drawable.ic_cart,
-                        size = 20.dp
+                        size = 20.dp,
                     )
                     AppText(
                         text = stringResource(R.string.shopping_cart),
-                        size = TextSize.BODY_SMALL
+                        size = TextSize.BODY_SMALL,
                     )
                 }
             }
 
             Row(
-                modifier = Modifier.padding(end = SpaceHorizontalLarge)
+                modifier = Modifier.padding(end = SpaceHorizontalLarge),
             ) {
                 // 加入购物车按钮（边框样式）
                 AppButtonBordered(
@@ -1000,12 +1041,11 @@ private fun GoodsActionBar(
                     onClick = onBuyNowClick,
                     size = ButtonSize.MINI,
                     style = ButtonStyle.GRADIENT,
-                    shape = ButtonShape.SQUARE
+                    shape = ButtonShape.SQUARE,
                 )
             }
         }
     }
-
 }
 
 /**
@@ -1021,9 +1061,9 @@ fun GoodsDetailScreenPreview() {
             uiState = BaseNetWorkUiState.Success(
                 data = GoodsDetail(
                     goodsInfo = previewGoods,
-                    coupon = previewMyCoupons
-                )
-            )
+                    coupon = previewMyCoupons,
+                ),
+            ),
         )
     }
 }
@@ -1041,9 +1081,9 @@ fun GoodsDetailScreenPreviewDark() {
             uiState = BaseNetWorkUiState.Success(
                 data = GoodsDetail(
                     goodsInfo = previewGoods,
-                    coupon = previewMyCoupons
-                )
-            )
+                    coupon = previewMyCoupons,
+                ),
+            ),
         )
     }
 }

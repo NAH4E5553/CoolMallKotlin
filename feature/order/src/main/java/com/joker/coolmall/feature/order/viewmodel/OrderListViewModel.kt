@@ -608,12 +608,16 @@ class OrderListViewModel @AssistedInject constructor(
                 ),
             ).asResult(),
             showToast = false,
-            onLoading = { _cancelReasonsModalUiState.value = BaseNetWorkUiState.Loading },
+            onLoading = {
+                _selectedCancelReason.value = null
+                _cancelReasonsModalUiState.value = BaseNetWorkUiState.Loading
+            },
             onData = { data ->
-                _cancelReasonsModalUiState.value =
-                    BaseNetWorkUiState.Success(data.orderCancelReason!!)
+                _selectedCancelReason.value = null
+                _cancelReasonsModalUiState.value = requiredDictionaryUiState(data.orderCancelReason)
             },
             onError = { _, _ ->
+                _selectedCancelReason.value = null
                 _cancelReasonsModalUiState.value = BaseNetWorkUiState.Error()
             },
         )

@@ -65,6 +65,8 @@
     <string name="not_paid">Not Paid</string>
     <string name="order_time">Order Time</string>
     <string name="order_remark">Order Remark</string>
+    <string name="order_address_missing">Shipping address is unavailable for this order</string>
+    <string name="order_address_missing_hint">Refresh the order or contact support if it remains unavailable</string>
 
     <!-- Order Confirm Page -->
     <string name="purchase_goods">Purchase Goods</string>

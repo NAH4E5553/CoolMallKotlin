@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.joker.coolmall.core.ui.component.network
 
 import androidx.compose.animation.AnimatedContent
@@ -11,11 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
+import com.joker.coolmall.core.ui.component.empty.EmptyData
 import com.joker.coolmall.core.ui.component.empty.EmptyNetwork
 import com.joker.coolmall.core.ui.component.loading.PageLoading
 
 /**
- * 基础网络视图组件，用于处理网络请求的三种状态：加载中、错误和成功
+ * 基础网络视图组件，用于处理加载中、空数据、错误和成功状态
  * 简化页面开发，避免重复编写状态处理代码
  *
  * @param T 数据类型
@@ -24,6 +27,7 @@ import com.joker.coolmall.core.ui.component.loading.PageLoading
  * @param padding 内边距值，通常来自Scaffold
  * @param onRetry 错误状态下重试点击回调
  * @param customLoading 自定义加载组件，为null时使用默认组件
+ * @param customEmpty 自定义空数据组件，为null时使用默认组件
  * @param customError 自定义错误组件，为null时使用默认组件
  * @param content 成功状态下显示的内容，接收数据参数
  * @author Joker.X
@@ -35,8 +39,9 @@ fun <T> BaseNetWorkView(
     padding: PaddingValues = PaddingValues(),
     onRetry: () -> Unit = {},
     customLoading: @Composable (() -> Unit)? = null,
+    customEmpty: @Composable (() -> Unit)? = null,
     customError: @Composable (() -> Unit)? = null,
-    content: @Composable (data: T) -> Unit
+    content: @Composable (data: T) -> Unit,
 ) {
     Box(
         modifier = modifier
@@ -47,9 +52,9 @@ fun <T> BaseNetWorkView(
             transitionSpec = {
                 // 定义进入和退出动画
                 fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
+                    fadeOut(animationSpec = tween(300))
             },
-            label = "NetworkStateAnimation"
+            label = "NetworkStateAnimation",
         ) { state ->
             when (state) {
                 is BaseNetWorkUiState.Loading -> {
@@ -57,6 +62,14 @@ fun <T> BaseNetWorkView(
                         customLoading()
                     } else {
                         PageLoading()
+                    }
+                }
+
+                is BaseNetWorkUiState.Empty -> {
+                    if (customEmpty != null) {
+                        customEmpty()
+                    } else {
+                        EmptyData(onRetryClick = onRetry)
                     }
                 }
 
