@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.goods.view
 
 import androidx.compose.animation.AnimatedVisibility
@@ -21,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -43,9 +45,7 @@ import com.joker.coolmall.core.designsystem.theme.SpacePaddingXSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXSmall
 import com.joker.coolmall.core.model.entity.Goods
-import com.joker.coolmall.navigation.goods.GoodsNavigator
-import com.joker.coolmall.navigation.goods.GoodsRoutes
-import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.core.ui.R as CoreUiR
 import com.joker.coolmall.core.ui.component.appbar.SearchTopAppBar
 import com.joker.coolmall.core.ui.component.goods.GoodsGridItem
 import com.joker.coolmall.core.ui.component.goods.GoodsListItem
@@ -59,7 +59,9 @@ import com.joker.coolmall.feature.goods.component.FilterDialog
 import com.joker.coolmall.feature.goods.model.SortState
 import com.joker.coolmall.feature.goods.model.SortType
 import com.joker.coolmall.feature.goods.viewmodel.GoodsCategoryViewModel
-import com.joker.coolmall.core.ui.R as CoreUiR
+import com.joker.coolmall.navigation.goods.GoodsNavigator
+import com.joker.coolmall.navigation.goods.GoodsRoutes
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 商品分类路由
@@ -75,33 +77,33 @@ internal fun GoodsCategoryRoute(
     viewModel: GoodsCategoryViewModel = hiltViewModel<GoodsCategoryViewModel, GoodsCategoryViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 网络请求UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 分类数据UI状态
-    val categoryUiState by viewModel.categoryUiState.collectAsState()
+    val categoryUiState by viewModel.categoryUiState.collectAsStateWithLifecycle()
     // 商品列表数据
-    val listData by viewModel.listData.collectAsState()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
     // 是否正在刷新
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     // 加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
     // 筛选弹窗是否可见
-    val filtersVisible by viewModel.filtersVisible.collectAsState()
+    val filtersVisible by viewModel.filtersVisible.collectAsStateWithLifecycle()
     // 选中的分类ID列表
-    val selectedCategoryIds by viewModel.selectedCategoryIds.collectAsState()
+    val selectedCategoryIds by viewModel.selectedCategoryIds.collectAsStateWithLifecycle()
     // 最低价格
-    val minPrice by viewModel.minPrice.collectAsState()
+    val minPrice by viewModel.minPrice.collectAsStateWithLifecycle()
     // 最高价格
-    val maxPrice by viewModel.maxPrice.collectAsState()
+    val maxPrice by viewModel.maxPrice.collectAsStateWithLifecycle()
     // 当前排序类型
-    val currentSortType by viewModel.currentSortType.collectAsState()
+    val currentSortType by viewModel.currentSortType.collectAsStateWithLifecycle()
     // 当前排序状态
-    val currentSortState by viewModel.currentSortState.collectAsState()
+    val currentSortState by viewModel.currentSortState.collectAsStateWithLifecycle()
     // 是否为网格布局
-    val isGridLayout by viewModel.isGridLayout.collectAsState()
+    val isGridLayout by viewModel.isGridLayout.collectAsStateWithLifecycle()
 
     SharedTransitionLayout {
         GoodsCategoryScreen(
@@ -122,13 +124,13 @@ internal fun GoodsCategoryRoute(
             onSortClick = viewModel::onSortClick,
             isGridLayout = isGridLayout,
             onToggleLayout = viewModel::toggleLayoutMode,
-            sharedTransitionScope = this@SharedTransitionLayout
+            sharedTransitionScope = this@SharedTransitionLayout,
         )
 
         AnimatedVisibility(
             visible = filtersVisible,
             enter = fadeIn(),
-            exit = fadeOut()
+            exit = fadeOut(),
         ) {
             FilterDialog(
                 sharedTransitionScope = this@SharedTransitionLayout,
@@ -188,7 +190,7 @@ internal fun GoodsCategoryScreen(
     onSortClick: (SortType) -> Unit = {},
     isGridLayout: Boolean = true,
     onToggleLayout: () -> Unit = {},
-    sharedTransitionScope: SharedTransitionScope
+    sharedTransitionScope: SharedTransitionScope,
 ) {
     // 创建TopAppBar的滚动行为
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -197,7 +199,7 @@ internal fun GoodsCategoryScreen(
         topBar = {
             Column(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(MaterialTheme.colorScheme.surface),
             ) {
                 SearchTopAppBar(
                     onBackClick = { navigateBack() },
@@ -208,9 +210,9 @@ internal fun GoodsCategoryScreen(
                         LayoutToggleButton(
                             isGridLayout = isGridLayout,
                             onToggleLayout = onToggleLayout,
-                            modifier = Modifier.padding(end = SpaceHorizontalSmall)
+                            modifier = Modifier.padding(end = SpaceHorizontalSmall),
                         )
-                    }
+                    },
                 )
                 SpaceVerticalSmall()
 
@@ -223,16 +225,16 @@ internal fun GoodsCategoryScreen(
                     sharedTransitionScope = sharedTransitionScope,
                     scrollBehavior = scrollBehavior,
                     isGridLayout = isGridLayout,
-                    onToggleLayout = onToggleLayout
+                    onToggleLayout = onToggleLayout,
                 )
                 SpaceVerticalSmall()
             }
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             GoodsCategoryContentView(
                 data = listData,
@@ -241,7 +243,7 @@ internal fun GoodsCategoryScreen(
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
                 shouldTriggerLoadMore = shouldTriggerLoadMore,
-                isGridLayout = isGridLayout
+                isGridLayout = isGridLayout,
             )
         }
     }
@@ -268,7 +270,7 @@ private fun GoodsCategoryContentView(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
-    isGridLayout: Boolean
+    isGridLayout: Boolean,
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
@@ -283,7 +285,7 @@ private fun GoodsCategoryContentView(
                     GoodsNavigator.toDetail(data[index].id)
                 })
             }
-        }
+        },
     ) {
         items(data.size) { index ->
             GoodsListItem(goods = data[index], onClick = {
@@ -318,14 +320,13 @@ private fun FilterBar(
     sharedTransitionScope: SharedTransitionScope,
     scrollBehavior: TopAppBarScrollBehavior,
     isGridLayout: Boolean,
-    onToggleLayout: () -> Unit
+    onToggleLayout: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .padding(horizontal = SpaceHorizontalMedium),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-
         with(sharedTransitionScope) {
             AnimatedVisibility(visible = !filtersVisible) {
                 Box(
@@ -335,7 +336,7 @@ private fun FilterBar(
                         .sharedBounds(
                             rememberSharedContentState("filter_button"),
                             animatedVisibilityScope = this@AnimatedVisibility,
-                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds
+                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                         )
                         .clickable { onFiltersClick() }
                         .padding(horizontal = SpaceHorizontalLarge)
@@ -348,11 +349,11 @@ private fun FilterBar(
                         CommonIcon(
                             resId = R.drawable.ic_filter,
                             size = 14.dp,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
                         AppText(
                             stringResource(R.string.filter),
-                            size = TextSize.BODY_MEDIUM
+                            size = TextSize.BODY_MEDIUM,
                         )
                     }
                 }
@@ -361,15 +362,16 @@ private fun FilterBar(
 
         FilterButton(
             isSelected = currentSortType == SortType.COMPREHENSIVE,
-            onClick = { onSortClick(SortType.COMPREHENSIVE) }
+            onClick = { onSortClick(SortType.COMPREHENSIVE) },
         ) {
             AppText(
                 text = stringResource(R.string.comprehensive),
                 size = TextSize.BODY_MEDIUM,
-                color = if (currentSortType == SortType.COMPREHENSIVE)
+                color = if (currentSortType == SortType.COMPREHENSIVE) {
                     MaterialTheme.colorScheme.primary
-                else
+                } else {
                     MaterialTheme.colorScheme.onSurface
+                },
             )
         }
 
@@ -378,7 +380,7 @@ private fun FilterBar(
             sortType = SortType.SALES,
             currentSortType = currentSortType,
             currentSortState = currentSortState,
-            onSortClick = onSortClick
+            onSortClick = onSortClick,
         )
 
         SortButtonWithArrows(
@@ -386,7 +388,7 @@ private fun FilterBar(
             sortType = SortType.PRICE,
             currentSortType = currentSortType,
             currentSortState = currentSortState,
-            onSortClick = onSortClick
+            onSortClick = onSortClick,
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -394,11 +396,11 @@ private fun FilterBar(
         AnimatedVisibility(
             visible = scrollBehavior.state.collapsedFraction >= 0.8f,
             enter = scaleIn(),
-            exit = scaleOut()
+            exit = scaleOut(),
         ) {
             LayoutToggleButton(
                 isGridLayout = isGridLayout,
-                onToggleLayout = onToggleLayout
+                onToggleLayout = onToggleLayout,
             )
         }
     }
@@ -413,20 +415,17 @@ private fun FilterBar(
  * @author Joker.X
  */
 @Composable
-private fun FilterButton(
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
+private fun FilterButton(isSelected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .padding(start = SpaceHorizontalSmall)
             .clip(ShapeCircle)
             .background(
-                if (isSelected)
+                if (isSelected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                else
+                } else {
                     MaterialTheme.colorScheme.background
+                },
             )
             .clickable { onClick() }
             .padding(horizontal = SpaceHorizontalLarge)
@@ -453,30 +452,31 @@ private fun SortButtonWithArrows(
     sortType: SortType,
     currentSortType: SortType,
     currentSortState: SortState,
-    onSortClick: (SortType) -> Unit
+    onSortClick: (SortType) -> Unit,
 ) {
     val isSelected = currentSortType == sortType && currentSortState != SortState.NONE
 
     FilterButton(
         isSelected = isSelected,
-        onClick = { onSortClick(sortType) }
+        onClick = { onSortClick(sortType) },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier.height(32.dp),
         ) {
             AppText(
                 text = text,
                 size = TextSize.BODY_MEDIUM,
-                color = if (isSelected)
+                color = if (isSelected) {
                     MaterialTheme.colorScheme.primary
-                else
+                } else {
                     MaterialTheme.colorScheme.onSurface
+                },
             )
             SortArrows(
                 sortType = sortType,
                 currentSortType = currentSortType,
-                currentSortState = currentSortState
+                currentSortState = currentSortState,
             )
         }
     }
@@ -491,29 +491,27 @@ private fun SortButtonWithArrows(
  * @author Joker.X
  */
 @Composable
-private fun SortArrows(
-    sortType: SortType,
-    currentSortType: SortType,
-    currentSortState: SortState
-) {
+private fun SortArrows(sortType: SortType, currentSortType: SortType, currentSortState: SortState) {
     Column(
-        modifier = Modifier.padding(start = SpaceVerticalXSmall)
+        modifier = Modifier.padding(start = SpaceVerticalXSmall),
     ) {
         CommonIcon(
             resId = R.drawable.ic_up_triangle,
             size = 6.dp,
-            tint = if (currentSortType == sortType && currentSortState == SortState.ASC)
+            tint = if (currentSortType == sortType && currentSortState == SortState.ASC) {
                 MaterialTheme.colorScheme.primary
-            else
+            } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            },
         )
         CommonIcon(
             resId = R.drawable.ic_down_triangle,
             size = 6.dp,
-            tint = if (currentSortType == sortType && currentSortState == SortState.DESC)
+            tint = if (currentSortType == sortType && currentSortState == SortState.DESC) {
                 MaterialTheme.colorScheme.primary
-            else
+            } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            },
         )
     }
 }
@@ -527,21 +525,17 @@ private fun SortArrows(
  * @author Joker.X
  */
 @Composable
-private fun LayoutToggleButton(
-    isGridLayout: Boolean,
-    onToggleLayout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun LayoutToggleButton(isGridLayout: Boolean, onToggleLayout: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(ShapeCircle)
             .clickable { onToggleLayout() }
-            .padding(SpacePaddingXSmall)
+            .padding(SpacePaddingXSmall),
     ) {
         CommonIcon(
             resId = if (isGridLayout) CoreUiR.drawable.ic_menu_list else CoreUiR.drawable.ic_menu,
             size = 24.dp,
-            tint = MaterialTheme.colorScheme.onSurface
+            tint = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -559,7 +553,7 @@ internal fun GoodsCategoryScreenPreview() {
         SharedTransitionLayout {
             GoodsCategoryScreen(
                 uiState = BaseNetWorkListUiState.Success,
-                sharedTransitionScope = this
+                sharedTransitionScope = this,
             )
         }
     }
@@ -578,7 +572,7 @@ internal fun GoodsCategoryScreenPreviewDark() {
         SharedTransitionLayout {
             GoodsCategoryScreen(
                 uiState = BaseNetWorkListUiState.Success,
-                sharedTransitionScope = this
+                sharedTransitionScope = this,
             )
         }
     }

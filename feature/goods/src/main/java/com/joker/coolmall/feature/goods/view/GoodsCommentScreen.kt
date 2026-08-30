@@ -1,23 +1,25 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.goods.view
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.model.entity.Comment
-import com.joker.coolmall.navigation.goods.GoodsRoutes
-import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.core.ui.component.network.BaseNetWorkListView
 import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.feature.goods.R
 import com.joker.coolmall.feature.goods.component.CommentCard
 import com.joker.coolmall.feature.goods.viewmodel.GoodsCommentViewModel
+import com.joker.coolmall.navigation.goods.GoodsRoutes
+import com.joker.coolmall.navigation.navigateBack
 
 /**
  * 商品评论路由
@@ -32,17 +34,17 @@ internal fun GoodsCommentRoute(
     viewModel: GoodsCommentViewModel = hiltViewModel<GoodsCommentViewModel, GoodsCommentViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 商品评论列表UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 商品评论列表数据
-    val listData by viewModel.listData.collectAsState()
+    val listData by viewModel.listData.collectAsStateWithLifecycle()
     // 是否正在刷新
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     // 加载更多状态
-    val loadMoreState by viewModel.loadMoreState.collectAsState()
+    val loadMoreState by viewModel.loadMoreState.collectAsStateWithLifecycle()
 
     GoodsCommentScreen(
         uiState = uiState,
@@ -52,7 +54,7 @@ internal fun GoodsCommentRoute(
         onRefresh = viewModel::onRefresh,
         onLoadMore = viewModel::onLoadMore,
         shouldTriggerLoadMore = viewModel::shouldTriggerLoadMore,
-        onRetry = viewModel::retryRequest
+        onRetry = viewModel::retryRequest,
     )
 }
 
@@ -79,15 +81,15 @@ internal fun GoodsCommentScreen(
     onRefresh: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean = { _, _ -> false },
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
 ) {
     AppScaffold(
         title = R.string.goods_comment_title,
-        onBackClick = { navigateBack() }
+        onBackClick = { navigateBack() },
     ) {
         BaseNetWorkListView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) {
             GoodsCommentContentView(
                 data = listData,
@@ -95,7 +97,7 @@ internal fun GoodsCommentScreen(
                 loadMoreState = loadMoreState,
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
-                shouldTriggerLoadMore = shouldTriggerLoadMore
+                shouldTriggerLoadMore = shouldTriggerLoadMore,
             )
         }
     }
@@ -120,19 +122,19 @@ private fun GoodsCommentContentView(
     loadMoreState: LoadMoreState,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
-    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean
+    shouldTriggerLoadMore: (lastIndex: Int, totalCount: Int) -> Boolean,
 ) {
     RefreshLayout(
         isRefreshing = isRefreshing,
         loadMoreState = loadMoreState,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
-        shouldTriggerLoadMore = shouldTriggerLoadMore
+        shouldTriggerLoadMore = shouldTriggerLoadMore,
     ) {
         // 商品评论列表项
         items(data.size) { index ->
             CommentCard(
-                comment = data[index]
+                comment = data[index],
             )
         }
     }
@@ -148,7 +150,7 @@ private fun GoodsCommentContentView(
 internal fun GoodsCommentScreenPreview() {
     AppTheme {
         GoodsCommentScreen(
-            uiState = BaseNetWorkListUiState.Success
+            uiState = BaseNetWorkListUiState.Success,
         )
     }
 }
@@ -163,7 +165,7 @@ internal fun GoodsCommentScreenPreview() {
 internal fun GoodsCommentScreenPreviewDark() {
     AppTheme(darkTheme = true) {
         GoodsCommentScreen(
-            uiState = BaseNetWorkListUiState.Success
+            uiState = BaseNetWorkListUiState.Success,
         )
     }
 }

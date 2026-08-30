@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.goods.view
 
@@ -47,7 +47,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +68,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.SpaceBetweenRow
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -149,17 +149,17 @@ internal fun GoodsDetailRoute(
     ),
 ) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 规格选择弹窗状态
-    val specModalVisible by viewModel.specModalVisible.collectAsState()
+    val specModalVisible by viewModel.specModalVisible.collectAsStateWithLifecycle()
     // 规格列表状态
-    val specsModalUiState by viewModel.specsModalUiState.collectAsState()
+    val specsModalUiState by viewModel.specsModalUiState.collectAsStateWithLifecycle()
     // 选中的规格
-    val selectedSpec by viewModel.selectedSpec.collectAsState()
+    val selectedSpec by viewModel.selectedSpec.collectAsStateWithLifecycle()
     // 动画状态
-    val hasAnimated by viewModel.hasAnimated.collectAsState()
+    val hasAnimated by viewModel.hasAnimated.collectAsStateWithLifecycle()
     // 优惠券弹窗状态
-    val couponModalVisible by viewModel.couponModalVisible.collectAsState()
+    val couponModalVisible by viewModel.couponModalVisible.collectAsStateWithLifecycle()
 
     GoodsDetailScreen(
         uiState = uiState,
