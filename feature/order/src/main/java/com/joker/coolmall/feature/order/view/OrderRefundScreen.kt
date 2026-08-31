@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.order.view
 
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,13 +11,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.EndRow
 import com.joker.coolmall.core.designsystem.component.VerticalList
@@ -26,8 +28,6 @@ import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.entity.Order
 import com.joker.coolmall.core.model.preview.previewCartList
 import com.joker.coolmall.core.model.preview.previewOrder
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.goods.OrderGoodsCard
 import com.joker.coolmall.core.ui.component.list.AppListItem
@@ -39,6 +39,8 @@ import com.joker.coolmall.core.ui.component.text.TextSize
 import com.joker.coolmall.core.ui.component.title.TitleWithLine
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.viewmodel.OrderRefundViewModel
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderRoutes
 
 /**
  * 退款申请路由
@@ -53,19 +55,19 @@ internal fun OrderRefundRoute(
     viewModel: OrderRefundViewModel = hiltViewModel<OrderRefundViewModel, OrderRefundViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 订单数据状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 购物车列表
-    val cartList by viewModel.cartList.collectAsState()
+    val cartList by viewModel.cartList.collectAsStateWithLifecycle()
     // 退款原因弹窗显示状态
-    val refundModalVisible by viewModel.refundModalVisible.collectAsState()
+    val refundModalVisible by viewModel.refundModalVisible.collectAsStateWithLifecycle()
     // 退款原因弹窗UI状态
-    val refundReasonsModalUiState by viewModel.refundReasonsModalUiState.collectAsState()
+    val refundReasonsModalUiState by viewModel.refundReasonsModalUiState.collectAsStateWithLifecycle()
     // 选中的退款原因
-    val selectedRefundReason by viewModel.selectedRefundReason.collectAsState()
+    val selectedRefundReason by viewModel.selectedRefundReason.collectAsStateWithLifecycle()
 
     OrderRefundScreen(
         uiState = uiState,
@@ -80,7 +82,7 @@ internal fun OrderRefundRoute(
         onReasonSelected = viewModel::selectRefundReason,
         onReasonConfirm = viewModel::selectRefundReason,
         onReasonRetry = viewModel::loadRefundReasons,
-        onSubmitClick = viewModel::submitRefundApplication
+        onSubmitClick = viewModel::submitRefundApplication,
     )
 }
 
@@ -117,7 +119,7 @@ internal fun OrderRefundScreen(
     onReasonSelected: (DictItem) -> Unit = {},
     onReasonConfirm: (DictItem?) -> Unit = {},
     onReasonRetry: () -> Unit = {},
-    onSubmitClick: () -> Unit = {}
+    onSubmitClick: () -> Unit = {},
 ) {
     AppScaffold(
         titleText = stringResource(R.string.order_refund),
@@ -133,28 +135,28 @@ internal fun OrderRefundScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(SpacePaddingMedium)
-                            .navigationBarsPadding()
+                            .navigationBarsPadding(),
                     ) {
                         AppButton(
                             text = stringResource(R.string.submit),
                             modifier = Modifier.fillMaxWidth(),
                             enabled = selectedRefundReason != null,
-                            onClick = onSubmitClick
+                            onClick = onSubmitClick,
                         )
                     }
                 }
             }
-        }
+        },
     ) {
         BaseNetWorkView(
             uiState = uiState,
-            onRetry = onRetry
+            onRetry = onRetry,
         ) { order ->
             OrderRefundContentView(
                 data = order,
                 cartList = cartList,
                 selectedRefundReason = selectedRefundReason,
-                onReasonClick = onReasonClick
+                onReasonClick = onReasonClick,
             )
         }
     }
@@ -168,7 +170,7 @@ internal fun OrderRefundScreen(
         selectedItem = selectedRefundReason,
         onConfirm = onReasonConfirm,
         onRetry = onReasonRetry,
-        onExpanded = onRefundModalExpanded
+        onExpanded = onRefundModalExpanded,
     )
 }
 
@@ -186,12 +188,11 @@ private fun OrderRefundContentView(
     data: Order,
     cartList: List<Cart> = emptyList(),
     selectedRefundReason: DictItem? = null,
-    onReasonClick: () -> Unit = {}
+    onReasonClick: () -> Unit = {},
 ) {
     VerticalList(
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
-
         // 退款金额卡片
         Card {
             AppListItem(
@@ -199,7 +200,7 @@ private fun OrderRefundContentView(
                 showArrow = false,
                 leadingContent = {
                     TitleWithLine(text = stringResource(R.string.refund_info))
-                }
+                },
             )
 
             AppListItem(
@@ -207,7 +208,7 @@ private fun OrderRefundContentView(
                 trailingText = selectedRefundReason?.name ?: stringResource(R.string.please_select),
                 showArrow = true,
 
-                onClick = onReasonClick
+                onClick = onReasonClick,
             )
 
             AppListItem(
@@ -221,7 +222,7 @@ private fun OrderRefundContentView(
                         decimalTextSize = TextSize.BODY_SMALL,
                         symbolTextSize = TextSize.BODY_SMALL,
                     )
-                }
+                },
             )
         }
 
@@ -247,8 +248,8 @@ internal fun OrderRefundScreenPreview() {
         OrderRefundScreen(
             cartList = previewCartList,
             uiState = BaseNetWorkUiState.Success(
-                data = previewOrder
-            )
+                data = previewOrder,
+            ),
         )
     }
 }
@@ -265,8 +266,8 @@ internal fun OrderRefundScreenPreviewDark() {
         OrderRefundScreen(
             cartList = previewCartList,
             uiState = BaseNetWorkUiState.Success(
-                data = previewOrder
-            )
+                data = previewOrder,
+            ),
         )
     }
 }

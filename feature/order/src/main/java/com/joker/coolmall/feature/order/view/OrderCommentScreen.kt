@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.order.view
 
 import android.net.Uri
@@ -12,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,13 +23,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.designsystem.component.VerticalList
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.ShapeMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXSmall
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXXLarge
-import com.joker.coolmall.navigation.navigateBack
-import com.joker.coolmall.navigation.order.OrderRoutes
 import com.joker.coolmall.core.ui.component.bottombar.AppBottomButton
 import com.joker.coolmall.core.ui.component.imagepicker.ImageGridPicker
 import com.joker.coolmall.core.ui.component.rate.WeRate
@@ -36,6 +36,8 @@ import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.core.ui.component.text.AppText
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.viewmodel.OrderCommentViewModel
+import com.joker.coolmall.navigation.navigateBack
+import com.joker.coolmall.navigation.order.OrderRoutes
 
 /**
  * 订单评价路由
@@ -50,19 +52,19 @@ internal fun OrderCommentRoute(
     viewModel: OrderCommentViewModel = hiltViewModel<OrderCommentViewModel, OrderCommentViewModel.Factory>(
         creationCallback = { factory ->
             factory.create(navKey)
-        }
+        },
     ),
 ) {
     // 评分
-    val rating by viewModel.rating.collectAsState()
+    val rating by viewModel.rating.collectAsStateWithLifecycle()
     // 评论内容
-    val commentContent by viewModel.commentContent.collectAsState()
+    val commentContent by viewModel.commentContent.collectAsStateWithLifecycle()
     // 选中的图片
-    val selectedImages by viewModel.selectedImages.collectAsState()
+    val selectedImages by viewModel.selectedImages.collectAsStateWithLifecycle()
     // 已上传的图片URL
-    val uploadedImageUrls by viewModel.uploadedImageUrls.collectAsState()
+    val uploadedImageUrls by viewModel.uploadedImageUrls.collectAsStateWithLifecycle()
     // 是否正在提交
-    val isSubmitting by viewModel.isSubmitting.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
 
     OrderCommentScreen(
         rating = rating,
@@ -74,7 +76,7 @@ internal fun OrderCommentRoute(
         onRatingChange = viewModel::updateRating,
         onCommentChange = viewModel::updateCommentContent,
         onImagesChange = viewModel::updateSelectedImages,
-        onSubmitComment = viewModel::onSubmitButtonClick
+        onSubmitComment = viewModel::onSubmitButtonClick,
     )
 }
 
@@ -119,9 +121,9 @@ internal fun OrderCommentScreen(
                 text = stringResource(R.string.submit_comment),
                 onClick = onSubmitComment,
                 enabled = isFormValid && !isSubmitting,
-                loading = isSubmitting
+                loading = isSubmitting,
             )
-        }
+        },
     ) {
         OrderCommentContentView(
             rating = rating,
@@ -157,10 +159,9 @@ private fun OrderCommentContentView(
     onCommentChange: (String) -> Unit,
     onImagesChange: (List<Uri>) -> Unit,
 ) {
-
     VerticalList(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier.verticalScroll(rememberScrollState()),
     ) {
         SpaceVerticalXXLarge()
         // 评分
@@ -191,7 +192,7 @@ private fun OrderCommentContentView(
                 .fillMaxWidth()
                 .background(
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = ShapeMedium
+                    shape = ShapeMedium,
                 ),
             placeholder = { Text(stringResource(R.string.comment_placeholder)) },
             colors = TextFieldDefaults.colors(
@@ -199,25 +200,24 @@ private fun OrderCommentContentView(
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
+                disabledIndicatorColor = Color.Transparent,
             ),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Done,
             ),
             minLines = 6,
-            maxLines = 8
+            maxLines = 8,
         )
 
         // 图片选择器
         ImageGridPicker(
             selectedImages = selectedImages,
             onImagesChanged = onImagesChange,
-            maxImages = 9
+            maxImages = 9,
         )
 
         SpaceVerticalXSmall()
-
     }
 }
 
@@ -233,7 +233,7 @@ internal fun OrderCommentScreenPreview() {
         OrderCommentScreen(
             rating = 5,
             commentContent = "这是一个很好的商品",
-            selectedImages = emptyList()
+            selectedImages = emptyList(),
         )
     }
 }
