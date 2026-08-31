@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -31,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
-import com.joker.coolmall.core.designsystem.component.CenterColumn
 import com.joker.coolmall.core.designsystem.component.EndRow
 import com.joker.coolmall.core.designsystem.component.HorizontalScroll
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -58,6 +58,7 @@ import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.component.OrderButtons
 import com.joker.coolmall.feature.order.model.OrderStatus
 import com.joker.coolmall.feature.order.model.OrderTabState
+import com.joker.coolmall.feature.order.model.totalGoodsQuantity
 import com.joker.coolmall.feature.order.viewmodel.OrderListViewModel
 import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.navigation.order.OrderNavigator
@@ -530,7 +531,7 @@ private fun OrderCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(SpacePaddingMedium)
-                    .padding(end = 80.dp),
+                    .padding(end = 112.dp),
             ) {
                 // 添加商品图片列表
                 order.goodsList?.forEach { goods ->
@@ -545,18 +546,24 @@ private fun OrderCard(
             }
 
             // 右侧价格和数量信息
-            CenterColumn(
+            Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .width(80.dp)
+                    .width(112.dp)
                     .padding(end = SpacePaddingMedium),
+                horizontalAlignment = Alignment.End,
             ) {
-                PriceText(order.price, integerTextSize = TextSize.BODY_LARGE)
+                PriceText(
+                    price = order.price,
+                    modifier = Modifier.wrapContentWidth(unbounded = true),
+                    integerTextSize = TextSize.BODY_LARGE,
+                )
                 SpaceVerticalXSmall()
                 AppText(
-                    text = stringResource(R.string.total_items, order.goodsList?.size ?: 0),
+                    text = stringResource(R.string.total_items, order.totalGoodsQuantity()),
                     size = TextSize.BODY_SMALL,
                     type = TextType.TERTIARY,
+                    maxLines = 1,
                 )
             }
         }

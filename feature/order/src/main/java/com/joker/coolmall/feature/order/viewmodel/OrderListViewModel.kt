@@ -11,11 +11,13 @@ import com.joker.coolmall.core.model.entity.Cart
 import com.joker.coolmall.core.model.entity.CartGoodsSpec
 import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.entity.Order
+import com.joker.coolmall.core.model.entity.OrderGoods
 import com.joker.coolmall.core.model.request.CancelOrderRequest
 import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.request.OrderPageRequest
 import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.feature.order.model.OrderStatus
+import com.joker.coolmall.feature.order.model.uncommentedGoods
 import com.joker.coolmall.navigation.RefreshResult
 import com.joker.coolmall.navigation.goods.GoodsNavigator
 import com.joker.coolmall.navigation.navigate
@@ -794,7 +796,8 @@ class OrderListViewModel @AssistedInject constructor(
         _commentCurrentOrder.value = null
         _commentCartList.value = emptyList()
 
-        val cartList = convertOrderGoodsToCart(order)
+        val cartList = convertOrderGoodsToCart(order.uncommentedGoods())
+        if (cartList.isEmpty()) return
         if (cartList.size > 1) {
             // 多个商品时显示弹窗让用户选择
             _commentCurrentOrder.value = order
@@ -825,9 +828,11 @@ class OrderListViewModel @AssistedInject constructor(
      * 将Order中的goodsList转换为Cart类型的列表
      * 参考OrderConfirmViewModel中的处理方法
      */
-    private fun convertOrderGoodsToCart(order: Order): List<Cart> = order.goodsList?.let { goodsList ->
+    private fun convertOrderGoodsToCart(order: Order): List<Cart> = convertOrderGoodsToCart(order.goodsList.orEmpty())
+
+    private fun convertOrderGoodsToCart(goodsList: List<OrderGoods>): List<Cart> = goodsList.let {
         // 按商品ID分组
-        val groupedGoods = goodsList.groupBy { it.goodsId }
+        val groupedGoods = it.groupBy { goods -> goods.goodsId }
 
         // 为每个商品ID创建一个Cart对象
         groupedGoods.map { (goodsId, items) ->
@@ -862,5 +867,5 @@ class OrderListViewModel @AssistedInject constructor(
                 this.spec = allSpecs
             }
         }
-    } ?: emptyList()
+    }
 }

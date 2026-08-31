@@ -60,6 +60,28 @@ class CartSelectionTest {
     }
 
     @Test
+    fun `retain valid selection removes missing goods and specs`() {
+        val carts = listOf(
+            cart(goodsId = 1, spec(id = 11), spec(id = 12)),
+            cart(goodsId = 2, spec(id = 21)),
+        )
+        val selection = mapOf(
+            1L to setOf(11L, 99L),
+            2L to setOf(22L),
+            3L to setOf(31L),
+        )
+
+        assertEquals(mapOf(1L to setOf(11L)), retainValidCartSelection(carts, selection))
+    }
+
+    @Test
+    fun `retain valid selection clears purchased carts removed from source`() {
+        val selection = mapOf(1L to setOf(11L, 12L))
+
+        assertEquals(emptyMap<Long, Set<Long>>(), retainValidCartSelection(emptyList(), selection))
+    }
+
+    @Test
     fun `selected count sums specs across goods`() {
         val selection = mapOf(
             1L to setOf(11L, 12L),
