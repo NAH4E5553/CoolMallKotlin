@@ -28,7 +28,10 @@
     <string name="order_status_unknown">Unknown</string>
 
     <!-- Order List Page -->
-    <string name="total_items">Total %d items</string>
+    <plurals name="total_items">
+        <item quantity="one">Total %d item</item>
+        <item quantity="other">Total %d items</item>
+    </plurals>
     <string name="select_cancel_reason">Select Cancel Reason</string>
     <string name="confirm_receipt">Confirm Receipt</string>
     <string name="confirm_receipt_message">Once confirmed, you cannot request refund or after-sales service. Please proceed with caution</string>
@@ -116,7 +119,7 @@
     <string name="rating_average">Average</string>
     <string name="rating_good">Good</string>
     <string name="rating_excellent">Excellent</string>
-    <string name="comment_placeholder">Please enter your comment...</string>
+    <string name="comment_placeholder">Please enter your comment…</string>
 
     <!-- Order Buttons -->
     <string name="cancel_order">Cancel Order</string>
@@ -130,7 +133,7 @@
     <!-- Toast Messages -->
     <string name="please_fill_comment">Please fill in review content and rating first</string>
     <string name="comment_submit_success">Review submitted successfully</string>
-    <string name="submitting">Submitting...</string>
+    <string name="submitting">Submitting…</string>
     <string name="payment_success">Payment successful</string>
     <string name="payment_failed">Payment failed</string>
     <string name="payment_cancel">Payment cancelled</string>

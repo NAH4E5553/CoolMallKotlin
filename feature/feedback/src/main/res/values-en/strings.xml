@@ -25,7 +25,7 @@
 
     <!-- Toast messages -->
     <string name="please_select_type_and_fill_content">Please select feedback type and fill in content</string>
-    <string name="submitting">Submitting...</string>
+    <string name="submitting">Submitting…</string>
     <string name="feedback_submit_success">Feedback submitted successfully, thank you for your feedback</string>
     <string name="feedback_type_empty">No feedback types available</string>
     <string name="feedback_type_empty_hint">Please try again later</string>

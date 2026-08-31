@@ -28,7 +28,9 @@
     <string name="order_status_unknown">未知状态</string>
 
     <!-- 订单列表页面 -->
-    <string name="total_items">共 %d 件</string>
+    <plurals name="total_items">
+        <item quantity="other">共 %d 件</item>
+    </plurals>
     <string name="select_cancel_reason">选择取消原因</string>
     <string name="confirm_receipt">确认收货</string>
     <string name="confirm_receipt_message">确认收货后无法发起退款等售后申请，请谨慎操作</string>
@@ -116,7 +118,7 @@
     <string name="rating_average">一般</string>
     <string name="rating_good">满意</string>
     <string name="rating_excellent">非常满意</string>
-    <string name="comment_placeholder">请输入您的评价内容...</string>
+    <string name="comment_placeholder">请输入您的评价内容…</string>
 
     <!-- 订单按钮 -->
     <string name="cancel_order">取消订单</string>
@@ -130,7 +132,7 @@
     <!-- Toast提示 -->
     <string name="please_fill_comment">请先填写评价内容和评分</string>
     <string name="comment_submit_success">评价提交成功</string>
-    <string name="submitting">正在提交中...</string>
+    <string name="submitting">正在提交中…</string>
     <string name="payment_success">支付成功</string>
     <string name="payment_failed">支付失败</string>
     <string name="payment_cancel">支付已取消</string>

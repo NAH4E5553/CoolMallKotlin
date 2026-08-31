@@ -19,24 +19,28 @@ import com.joker.coolmall.core.model.entity.GoodsSpec
 import com.joker.coolmall.core.model.entity.SelectedGoods
 import com.joker.coolmall.core.model.request.ReceiveCouponRequest
 import com.joker.coolmall.core.model.response.NetworkResponse
+import com.joker.coolmall.core.util.log.LogUtils
+import com.joker.coolmall.core.util.storage.MMKVUtils
+import com.joker.coolmall.core.util.toast.ToastUtils
+import com.joker.coolmall.feature.goods.R
 import com.joker.coolmall.navigation.auth.AuthRoutes
 import com.joker.coolmall.navigation.goods.GoodsRoutes
 import com.joker.coolmall.navigation.navigate
 import com.joker.coolmall.navigation.order.OrderRoutes
-import com.joker.coolmall.core.util.storage.MMKVUtils
-import com.joker.coolmall.core.util.toast.ToastUtils
-import com.joker.coolmall.feature.goods.R
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private const val TAG = "GoodsDetailViewModel"
 
 /**
  * 商品详情页面ViewModel
@@ -113,9 +117,7 @@ class GoodsDetailViewModel @AssistedInject constructor(
      * @return 商品详情的网络响应Flow
      * @author Joker.X
      */
-    override fun requestApiFlow(): Flow<NetworkResponse<GoodsDetail>> {
-        return pageRepository.getGoodsDetail(goodsId)
-    }
+    override fun requestApiFlow(): Flow<NetworkResponse<GoodsDetail>> = pageRepository.getGoodsDetail(goodsId)
 
     /**
      * 处理成功结果，重写此方法添加足迹记录
@@ -145,12 +147,14 @@ class GoodsDetailViewModel @AssistedInject constructor(
                     goodsMainPic = goods.mainPic,
                     goodsPrice = goods.price,
                     goodsSold = goods.sold,
-                    viewTime = System.currentTimeMillis()
+                    viewTime = System.currentTimeMillis(),
                 )
                 footprintRepository.addFootprint(footprint)
-            } catch (e: Exception) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
                 // 足迹添加失败不影响主要功能，只记录错误
-                e.printStackTrace()
+                LogUtils.e(TAG, "Failed to add goods footprint", exception)
             }
         }
     }
@@ -168,7 +172,7 @@ class GoodsDetailViewModel @AssistedInject constructor(
         ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = goodsRepository.getGoodsSpecList(
-                mapOf("goodsId" to goodsId)
+                mapOf("goodsId" to goodsId),
             ).asResult(),
             showToast = false,
             onLoading = { _specsModalUiState.value = BaseNetWorkUiState.Loading },
@@ -177,7 +181,7 @@ class GoodsDetailViewModel @AssistedInject constructor(
             },
             onError = { _, _ ->
                 _specsModalUiState.value = BaseNetWorkUiState.Error()
-            }
+            },
         )
     }
 
@@ -307,7 +311,7 @@ class GoodsDetailViewModel @AssistedInject constructor(
                     cartRepository.updateCartSpecCount(
                         goodsId = selectedGoods.goodsId,
                         specId = existingSpec.id,
-                        count = existingSpec.count + selectedGoods.count
+                        count = existingSpec.count + selectedGoods.count,
                     )
                 } else {
                     // 添加新规格
@@ -357,17 +361,15 @@ class GoodsDetailViewModel @AssistedInject constructor(
      * @return 购物车商品规格
      * @author Joker.X
      */
-    private fun GoodsSpec.toCartGoodsSpec(count: Int): CartGoodsSpec {
-        return CartGoodsSpec(
-            id = this.id,
-            goodsId = this.goodsId,
-            name = this.name,
-            price = this.price,
-            stock = this.stock,
-            count = count,
-            images = this.images
-        )
-    }
+    private fun GoodsSpec.toCartGoodsSpec(count: Int): CartGoodsSpec = CartGoodsSpec(
+        id = this.id,
+        goodsId = this.goodsId,
+        name = this.name,
+        price = this.price,
+        stock = this.stock,
+        count = count,
+        images = this.images,
+    )
 
     /**
      * Assisted Factory

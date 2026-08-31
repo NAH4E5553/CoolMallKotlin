@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -125,7 +126,9 @@ internal fun AboutScreen(onCitationClick: () -> Unit = {}) {
     val scrollState = rememberScrollState(0)
 
     val scrollFadeThresholdPx = with(LocalDensity.current) { 220.dp.toPx() }
-    val scrollFraction = (scrollState.value / scrollFadeThresholdPx).coerceIn(0f, 1f)
+    val scrollFraction by remember(scrollState, scrollFadeThresholdPx) {
+        derivedStateOf { (scrollState.value / scrollFadeThresholdPx).coerceIn(0f, 1f) }
+    }
 
     // 入场动画状态
     var isAnimationReady by remember { mutableStateOf(false) }
