@@ -1,0 +1,51 @@
+name: OpenCodeReview Pilot
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "**/*.kt"
+      - "**/*.kts"
+      - "**/AndroidManifest.xml"
+      - "**/src/main/res/values*/**"
+      - "**/src/main/res/xml/**"
+      - ".opencodereview/**"
+      - ".github/workflows/open-code-review.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: open-code-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: OpenCodeReview
+    if: >-
+      vars.OCR_ENABLED == 'true' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Review pull request
+        uses: alibaba/open-code-review@8d023aafcec05f8ba5628fca3eaba88078e5d201 # v1.11.1
+        with:
+          llm_url: ${{ secrets.OCR_LLM_URL }}
+          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          llm_model: ${{ vars.OCR_LLM_MODEL }}
+          llm_use_anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
+          ocr_version: "1.11.1"
+          language: Chinese
+          rule: .opencodereview/rule.json
+          review_concurrency: "2"
+          upload_artifacts: "false"
+          sticky_summary: "true"
+          incremental: "true"
+          checkpoint_range: "false"
+          route_severity_below: low
+          route_categories: style,documentation

@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "path": "**/*.{kt,kts}",
+      "rule": "仅报告能够结合本次 Diff、当前实现和调用方证明的缺陷，不报告纯格式问题、无行为收益的重构建议或缺少证据的推测。遵循仓库 AGENTS.md：保持 app -> feature -> core 依赖方向；Composable 不直接访问 Repository、DataSource、Service 或 DAO；Route 负责 ViewModel 和导航，Screen 通过参数与回调保持可测试；Android UI 收集 ViewModel Flow 时使用 collectAsStateWithLifecycle；ViewModel 对外只暴露不可变 StateFlow。重点检查协程取消是否被吞、旧请求覆盖新状态、重复提交、并发读改写、加载/空/错误语义混淆，以及服务端可空字段的强制解包。导航 Key 必须类型安全且可序列化，结果事件不得跨业务域串扰。用户可见文本应使用资源并同步中英文；业务修改应有与 Success、Failure、边界、取消和并发风险匹配的测试。不要建议删除 android.enableJetifier=true，它是当前明确保留的第三方兼容配置。",
+      "merge_system_rule": true
+    },
+    {
+      "path": "**/AndroidManifest.xml",
+      "rule": "重点检查新增权限、导出组件、Intent 输入、明文网络、备份规则、第三方回调和敏感配置。不得提交 Secret、签名信息或放宽 TLS 校验；登录、支付、备份和外部可调用组件必须说明并验证安全边界。",
+      "merge_system_rule": true
+    },
+    {
+      "path": "**/src/main/res/values*/**/*.xml",
+      "rule": "检查用户可见资源是否同步维护中文和英文，格式占位符的数量、类型和位置是否一致，数量文案是否应使用 plurals，以及字符串是否会因翻译后参数顺序变化而显示错误。避免把纯排版偏好作为缺陷。",
+      "merge_system_rule": true
+    },
+    {
+      "path": "**/src/main/res/xml/**/*.xml",
+      "rule": "重点检查备份、数据提取、网络安全和文件共享规则是否会暴露 Token、账号、支付数据、MMKV、数据库或用户文件；同时检查不同 Android 版本使用的配套规则是否保持一致。",
+      "merge_system_rule": true
+    }
+  ]
+}
