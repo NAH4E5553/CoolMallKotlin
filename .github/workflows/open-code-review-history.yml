@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: open-code-review-history
@@ -23,10 +22,17 @@ concurrency:
 
 jobs:
   review:
-    name: Review historical PR #${{ inputs.pr_number }}
+    name: Review historical pull request
     if: vars.OCR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      artifact_name: open-code-review-history-${{ github.run_id }}
+      base_sha: ${{ steps.pull-request.outputs.base_sha }}
+      head_sha: ${{ steps.pull-request.outputs.head_sha }}
+      number: ${{ steps.pull-request.outputs.number }}
+      state: ${{ steps.pull-request.outputs.state }}
+      url: ${{ steps.pull-request.outputs.url }}
 
     steps:
       - name: Resolve pull request range
@@ -61,6 +67,7 @@ jobs:
         with:
           ref: ${{ steps.pull-request.outputs.base_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Prepare trusted review inputs
         env:
@@ -183,22 +190,46 @@ jobs:
           name: open-code-review-history-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/ocr-history-result.json
-            ${{ runner.temp }}/ocr-history-stderr.log
             ${{ runner.temp }}/ocr-history-files.txt
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Fail on OpenCodeReview error
+        if: steps.review.outputs.exit_code != '0'
+        env:
+          OCR_EXIT_CODE: ${{ steps.review.outputs.exit_code }}
+        shell: bash
+        run: |
+          echo "::error::OpenCodeReview exited with code ${OCR_EXIT_CODE}; inspect the uploaded artifact"
+          exit "${OCR_EXIT_CODE}"
+
+  publish:
+    name: Publish historical review summary
+    needs: review
+    if: needs.review.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Download historical review artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ needs.review.outputs.artifact_name }}
+          path: ${{ runner.temp }}/ocr-history
+
       - name: Publish historical review summary
-        if: steps.review.outputs.exit_code == '0'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          BASE_SHA: ${{ steps.pull-request.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.pull-request.outputs.head_sha }}
-          PR_NUMBER: ${{ steps.pull-request.outputs.number }}
-          PR_STATE: ${{ steps.pull-request.outputs.state }}
-          PR_URL: ${{ steps.pull-request.outputs.url }}
+          BASE_SHA: ${{ needs.review.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.review.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.review.outputs.number }}
+          PR_STATE: ${{ needs.review.outputs.state }}
+          PR_URL: ${{ needs.review.outputs.url }}
           PUBLISH_SUMMARY: ${{ inputs.publish_summary }}
-          RESULT_PATH: ${{ runner.temp }}/ocr-history-result.json
+          RESULT_PATH: ${{ runner.temp }}/ocr-history/ocr-history-result.json
         with:
           script: |
             const fs = require('fs');
@@ -209,20 +240,31 @@ jobs:
             const neutralize = (value) => String(value ?? '')
               .replaceAll('@', '@\u200b')
               .replaceAll('<!--', '&lt;!--');
-            const escapeCode = (value) => String(value ?? '')
+            const escapeHtml = (value) => String(value ?? '')
               .replaceAll('&', '&amp;')
               .replaceAll('<', '&lt;')
               .replaceAll('>', '&gt;');
             const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
+            const allowedCategories = new Set([
+              'bug',
+              'security',
+              'performance',
+              'maintainability',
+              'test',
+              'style',
+              'documentation',
+              'other',
+            ]);
             const findings = [...(result.comments ?? [])].sort((left, right) =>
               (severityRank[left.severity] ?? 4) - (severityRank[right.severity] ?? 4));
             const summary = result.summary ?? {};
             const asCount = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0;
+            const asLine = (value) => Number.isSafeInteger(value) && value > 0 ? value : '?';
 
             let body = `${marker}\n## OpenCodeReview 历史审查\n\n`;
             body += `- PR：[#${pullNumber}](${process.env.PR_URL})（${process.env.PR_STATE}）\n`;
             body += `- 精确范围：\`${process.env.BASE_SHA.slice(0, 12)}..${process.env.HEAD_SHA.slice(0, 12)}\`\n`;
-            body += `- 模型：\`${neutralize(result.llm?.model || 'unknown')}\`\n`;
+            body += `- 模型：<code>${escapeHtml(neutralize(result.llm?.model || 'unknown'))}</code>\n`;
             body += `- 已审查文件：${asCount(summary.files_reviewed)}\n`;
             body += `- 发现问题：${findings.length}\n`;
             body += `- Token：${asCount(summary.total_tokens)}（输入 ${asCount(summary.input_tokens)}，输出 ${asCount(summary.output_tokens)}）\n`;
@@ -235,17 +277,22 @@ jobs:
               body += '\n### 审查意见\n';
               let included = 0;
               for (const finding of findings) {
-                const path = neutralize(finding.path || 'unknown');
-                const start = finding.start_line ?? '?';
-                const end = finding.end_line && finding.end_line !== finding.start_line
-                  ? `-${finding.end_line}`
-                  : '';
-                let section = `\n#### ${neutralize(finding.severity || 'unknown').toUpperCase()} · ${neutralize(finding.category || 'other')}\n\n`;
-                section += `\`${path}:${start}${end}\`\n\n`;
-                section += neutralize(finding.content || '').split('\n').map((line) => `> ${line}`).join('\n');
-                section += '\n';
+                const path = escapeHtml(neutralize(finding.path || 'unknown'));
+                const start = asLine(finding.start_line);
+                const endLine = asLine(finding.end_line);
+                const end = endLine !== '?' && endLine !== start ? `-${endLine}` : '';
+                const severity = Object.hasOwn(severityRank, finding.severity)
+                  ? finding.severity
+                  : 'unknown';
+                const category = allowedCategories.has(finding.category)
+                  ? finding.category
+                  : 'other';
+                const content = escapeHtml(neutralize(finding.content || '')).replaceAll('\n', '<br>');
+                let section = `\n#### ${severity.toUpperCase()} · ${category}\n\n`;
+                section += `<code>${path}:${start}${end}</code>\n\n`;
+                section += `<blockquote>${content}</blockquote>\n`;
                 if (finding.suggestion_code) {
-                  section += `\n<details><summary>建议修改</summary>\n\n<pre><code>${escapeCode(finding.suggestion_code)}</code></pre>\n\n</details>\n`;
+                  section += `\n<details><summary>建议修改</summary>\n\n<pre><code>${escapeHtml(finding.suggestion_code)}</code></pre>\n\n</details>\n`;
                 }
 
                 if (body.length + section.length > 58000) {
@@ -291,12 +338,3 @@ jobs:
               });
               core.info(`Created historical review comment ${created.id}.`);
             }
-
-      - name: Fail on OpenCodeReview error
-        if: steps.review.outputs.exit_code != '0'
-        env:
-          OCR_EXIT_CODE: ${{ steps.review.outputs.exit_code }}
-        shell: bash
-        run: |
-          echo "::error::OpenCodeReview exited with code ${OCR_EXIT_CODE}; inspect the uploaded artifact"
-          exit "${OCR_EXIT_CODE}"
