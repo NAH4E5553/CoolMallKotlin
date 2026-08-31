@@ -18,16 +18,71 @@ env:
   JAVA_VERSION: "17"
 
 jobs:
-  build:
-    name: Build
+  changes:
+    name: Classify Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      run_android: ${{ steps.classify.outputs.run_android }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify Android CI changes
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]] || \
+            [[ -z "$BASE_SHA" ]] || [[ "$BASE_SHA" =~ ^0+$ ]]; then
+            run_android=true
+            echo "Android CI will run: manual or unclassifiable event range"
+          else
+            run_android="$(bash .github/scripts/should-run-android-ci.sh "$BASE_SHA" "$HEAD_SHA")"
+          fi
+
+          if [[ "$run_android" != "true" && "$run_android" != "false" ]]; then
+            echo "::error::Invalid Android CI classification: $run_android"
+            exit 1
+          fi
+          echo "run_android=$run_android" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build
+    needs: changes
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Validate change classification
+        env:
+          CLASSIFICATION_RESULT: ${{ needs.changes.result }}
+          RUN_ANDROID: ${{ needs.changes.outputs.run_android }}
+        shell: bash
+        run: |
+          if [[ "$CLASSIFICATION_RESULT" != "success" ]] || \
+            [[ "$RUN_ANDROID" != "true" && "$RUN_ANDROID" != "false" ]]; then
+            echo "::error::Android CI change classification failed"
+            exit 1
+          fi
+
+      - name: Skip Android build
+        if: needs.changes.outputs.run_android == 'false'
+        run: echo "No Android-relevant changes; Build completed without Gradle."
+
+      - name: Check out repository
+        if: needs.changes.outputs.run_android == 'true'
+        uses: actions/checkout@v6
 
       - name: Set up JDK
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -35,18 +90,39 @@ jobs:
           cache: gradle
 
       - name: Build DevDebug APK
+        if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew :app:assembleDevDebug --no-daemon --stacktrace
 
   unit-tests:
     name: Unit Tests
+    needs: changes
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
+      - name: Validate change classification
+        env:
+          CLASSIFICATION_RESULT: ${{ needs.changes.result }}
+          RUN_ANDROID: ${{ needs.changes.outputs.run_android }}
+        shell: bash
+        run: |
+          if [[ "$CLASSIFICATION_RESULT" != "success" ]] || \
+            [[ "$RUN_ANDROID" != "true" && "$RUN_ANDROID" != "false" ]]; then
+            echo "::error::Android CI change classification failed"
+            exit 1
+          fi
+
+      - name: Skip unit tests
+        if: needs.changes.outputs.run_android == 'false'
+        run: echo "No Android-relevant changes; Unit Tests completed without Gradle."
+
       - name: Check out repository
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/checkout@v6
 
       - name: Set up JDK
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -54,10 +130,11 @@ jobs:
           cache: gradle
 
       - name: Run DevDebug unit tests
+        if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew testDevDebugUnitTest --no-daemon --stacktrace
 
       - name: Upload unit test reports
-        if: always()
+        if: always() && needs.changes.outputs.run_android == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: unit-test-reports
@@ -69,14 +146,34 @@ jobs:
 
   lint:
     name: Android Lint
+    needs: changes
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
+      - name: Validate change classification
+        env:
+          CLASSIFICATION_RESULT: ${{ needs.changes.result }}
+          RUN_ANDROID: ${{ needs.changes.outputs.run_android }}
+        shell: bash
+        run: |
+          if [[ "$CLASSIFICATION_RESULT" != "success" ]] || \
+            [[ "$RUN_ANDROID" != "true" && "$RUN_ANDROID" != "false" ]]; then
+            echo "::error::Android CI change classification failed"
+            exit 1
+          fi
+
+      - name: Skip Android lint
+        if: needs.changes.outputs.run_android == 'false'
+        run: echo "No Android-relevant changes; Android Lint completed without Gradle."
+
       - name: Check out repository
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/checkout@v6
 
       - name: Set up JDK
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -84,10 +181,11 @@ jobs:
           cache: gradle
 
       - name: Run Android Lint
+        if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew lintDevDebug --no-daemon --stacktrace
 
       - name: Upload Android Lint reports
-        if: always()
+        if: always() && needs.changes.outputs.run_android == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: android-lint-reports
@@ -97,16 +195,36 @@ jobs:
 
   code-format:
     name: Code Format
+    needs: changes
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
+      - name: Validate change classification
+        env:
+          CLASSIFICATION_RESULT: ${{ needs.changes.result }}
+          RUN_ANDROID: ${{ needs.changes.outputs.run_android }}
+        shell: bash
+        run: |
+          if [[ "$CLASSIFICATION_RESULT" != "success" ]] || \
+            [[ "$RUN_ANDROID" != "true" && "$RUN_ANDROID" != "false" ]]; then
+            echo "::error::Android CI change classification failed"
+            exit 1
+          fi
+
+      - name: Skip code format check
+        if: needs.changes.outputs.run_android == 'false'
+        run: echo "No Android-relevant changes; Code Format completed without Gradle."
+
       - name: Check out repository
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up JDK
+        if: needs.changes.outputs.run_android == 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -114,4 +232,5 @@ jobs:
           cache: gradle
 
       - name: Check code format
+        if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew spotlessCheck --no-daemon --stacktrace
