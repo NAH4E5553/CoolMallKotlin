@@ -16,6 +16,14 @@ git cat-file -e "${head_sha}^{commit}"
 has_changes=false
 run_android=false
 
+changed_paths_file="$(mktemp)"
+trap 'rm -f -- "$changed_paths_file"' EXIT
+
+if ! git diff --name-only -z "$base_sha" "$head_sha" -- > "$changed_paths_file"; then
+  echo "unable to read the changed file range" >&2
+  exit 1
+fi
+
 while IFS= read -r -d '' path; do
   has_changes=true
   case "$path" in
@@ -30,7 +38,7 @@ while IFS= read -r -d '' path; do
       break
       ;;
   esac
-done < <(git diff --name-only -z "$base_sha" "$head_sha")
+done < "$changed_paths_file"
 
 if [[ "$has_changes" != "true" ]]; then
   echo "unable to classify an empty change range" >&2
