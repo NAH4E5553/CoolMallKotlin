@@ -9,14 +9,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,8 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
@@ -36,6 +46,7 @@ import com.joker.coolmall.core.common.base.state.LoadMoreState
 import com.joker.coolmall.core.designsystem.component.EndRow
 import com.joker.coolmall.core.designsystem.component.HorizontalScroll
 import com.joker.coolmall.core.designsystem.theme.AppTheme
+import com.joker.coolmall.core.designsystem.theme.ColorDanger
 import com.joker.coolmall.core.designsystem.theme.ShapeMedium
 import com.joker.coolmall.core.designsystem.theme.ShapeSmall
 import com.joker.coolmall.core.designsystem.theme.SpacePaddingMedium
@@ -52,7 +63,6 @@ import com.joker.coolmall.core.ui.component.network.BaseNetWorkListView
 import com.joker.coolmall.core.ui.component.refresh.RefreshLayout
 import com.joker.coolmall.core.ui.component.scaffold.AppScaffold
 import com.joker.coolmall.core.ui.component.text.AppText
-import com.joker.coolmall.core.ui.component.text.PriceText
 import com.joker.coolmall.core.ui.component.text.TextSize
 import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.feature.order.R
@@ -554,10 +564,9 @@ private fun OrderCard(
                     .padding(end = SpacePaddingMedium),
                 horizontalAlignment = Alignment.End,
             ) {
-                PriceText(
+                OrderListPrice(
                     price = order.price,
-                    modifier = Modifier.wrapContentWidth(unbounded = true),
-                    integerTextSize = TextSize.BODY_LARGE,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 SpaceVerticalXSmall()
                 val totalQuantity = order.totalGoodsQuantity()
@@ -588,6 +597,50 @@ private fun OrderCard(
             )
         }
     }
+}
+
+/**
+ * 订单列表中的单行价格。
+ *
+ * 价格始终受右侧信息列约束；金额过长或系统字体放大时优先缩小字号，避免覆盖左侧商品图片。
+ */
+@Composable
+private fun OrderListPrice(price: Int, modifier: Modifier = Modifier) {
+    val priceText = buildAnnotatedString {
+        withStyle(
+            SpanStyle(
+                fontSize = 0.86.em,
+                fontWeight = FontWeight.Normal,
+            ),
+        ) {
+            append("¥ ")
+        }
+        append(price.toString())
+        withStyle(
+            SpanStyle(
+                fontSize = 0.86.em,
+                fontWeight = FontWeight.Normal,
+            ),
+        ) {
+            append(".00")
+        }
+    }
+
+    Text(
+        text = priceText,
+        modifier = modifier,
+        color = ColorDanger,
+        autoSize = TextAutoSize.StepBased(
+            minFontSize = 10.sp,
+            maxFontSize = MaterialTheme.typography.bodyLarge.fontSize,
+        ),
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.End,
+        overflow = TextOverflow.Ellipsis,
+        softWrap = false,
+        maxLines = 1,
+        style = MaterialTheme.typography.bodyLarge,
+    )
 }
 
 /**
