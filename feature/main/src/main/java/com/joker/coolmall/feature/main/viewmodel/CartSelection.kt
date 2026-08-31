@@ -23,6 +23,14 @@ internal fun toggleCartItemSelection(currentSelection: CartSelection, goodsId: L
         }
     }.toMap()
 
+internal fun retainValidCartSelection(carts: List<Cart>, selection: CartSelection): CartSelection = buildMap {
+    carts.forEach { cart ->
+        val validSpecIds = cart.spec.mapTo(mutableSetOf()) { it.id }
+        val retainedSpecIds = selection[cart.goodsId].orEmpty().intersect(validSpecIds)
+        if (retainedSpecIds.isNotEmpty()) put(cart.goodsId, retainedSpecIds)
+    }
+}
+
 internal fun areAllCartItemsSelected(carts: List<Cart>, selection: CartSelection): Boolean {
     val allItems = carts.flatMap { cart ->
         cart.spec.map { spec -> cart.goodsId to spec.id }

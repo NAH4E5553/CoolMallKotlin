@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -63,7 +64,9 @@ class CartViewModel @AssistedInject constructor(
      * 购物车列表数据
      */
     val cartItems: StateFlow<List<Cart>> = cartRepository.getAllCarts()
-        .map { carts -> carts }
+        .onEach { carts ->
+            _selectedItems.update { selected -> retainValidCartSelection(carts, selected) }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -213,14 +216,16 @@ class CartViewModel @AssistedInject constructor(
      */
     fun onCheckoutClick() {
         viewModelScope.launch {
-            val selected = selectedItems.value
+            val carts = cartItems.value
+            val selected = retainValidCartSelection(carts, selectedItems.value)
+            _selectedItems.value = selected
             if (selected.isEmpty()) {
                 ToastUtils.showError(R.string.please_select_settlement_goods)
                 return@launch
             }
 
             // 1. 获取选中的购物车项
-            val selectedCarts = getSelectedCarts()
+            val selectedCarts = getSelectedCarts(carts, selected)
             if (selectedCarts.isEmpty()) {
                 ToastUtils.showError(R.string.get_selected_goods_failed)
                 return@launch
@@ -246,11 +251,10 @@ class CartViewModel @AssistedInject constructor(
      * @return 选中的购物车列表
      * @author Joker.X
      */
-    private fun getSelectedCarts(): List<Cart> {
+    private fun getSelectedCarts(carts: List<Cart>, selected: CartSelection): List<Cart> {
         val result = mutableListOf<Cart>()
-        val selected = selectedItems.value
 
-        cartItems.value.forEach { cart ->
+        carts.forEach { cart ->
             val goodsId = cart.goodsId
             val selectedSpecIds = selected[goodsId] ?: return@forEach
 
