@@ -18,8 +18,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: open-code-review-history-${{ inputs.pr_number }}
-  cancel-in-progress: true
+  group: open-code-review-history
+  cancel-in-progress: false
 
 jobs:
   review:
@@ -88,6 +88,10 @@ jobs:
 
           git fetch --no-tags origin \
             "refs/heads/main:refs/remotes/origin/main"
+          if ! git cat-file -e origin/main:.opencodereview/rule.json; then
+            echo "::error::Missing .opencodereview/rule.json on origin/main"
+            exit 1
+          fi
           git show origin/main:.opencodereview/rule.json \
             > "${RUNNER_TEMP}/ocr-history-rule.json"
           git diff --name-only "$BASE_SHA" "$HEAD_SHA" \

@@ -36,7 +36,7 @@ gh workflow run open-code-review-history.yml \
   -f publish_summary=true
 ```
 
-原始 JSON、错误日志和变更文件清单作为 Artifact 保留 14 天。对同一 PR 重跑时会更新已有的历史审查汇总，避免重复评论；已合并 PR 不发布行内意见。手动工作流必须先合并到默认分支，GitHub 才允许通过 `workflow_dispatch` 运行。
+原始 JSON、错误日志和变更文件清单作为 Artifact 保留 14 天。历史审查在仓库内全局串行，避免同时消耗多份模型额度；对同一 PR 重跑时会更新已有的历史审查汇总，避免重复评论；已合并 PR 不发布行内意见。手动工作流必须先合并到默认分支，GitHub 才允许通过 `workflow_dispatch` 运行。
 
 ## 启用配置
 
