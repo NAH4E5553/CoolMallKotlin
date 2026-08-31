@@ -10,6 +10,8 @@ on:
       - "**/AndroidManifest.xml"
       - "**/src/main/res/values*/**"
       - "**/src/main/res/xml/**"
+      - ".github/scripts/**"
+      - ".github/workflows/android-ci.yml"
       - ".opencodereview/**"
       - ".github/workflows/open-code-review.yml"
       - ".github/workflows/open-code-review-history.yml"
