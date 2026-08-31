@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.order.view
 
@@ -18,7 +18,6 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -28,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
@@ -82,42 +82,42 @@ internal fun OrderListRoute(
     ),
 ) {
     // 当前选中的标签索引
-    val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
+    val selectedTabIndex by viewModel.selectedTabIndex.collectAsStateWithLifecycle()
     // 是否正在进行标签切换动画
-    val isAnimatingTabChange by viewModel.isAnimatingTabChange.collectAsState()
+    val isAnimatingTabChange by viewModel.isAnimatingTabChange.collectAsStateWithLifecycle()
 
     // 收集取消订单相关状态
     // 取消订单弹窗显示状态
-    val cancelModalVisible by viewModel.cancelModalVisible.collectAsState()
+    val cancelModalVisible by viewModel.cancelModalVisible.collectAsStateWithLifecycle()
     // 取消原因弹出层UI状态
-    val cancelReasonsModalUiState by viewModel.cancelReasonsModalUiState.collectAsState()
+    val cancelReasonsModalUiState by viewModel.cancelReasonsModalUiState.collectAsStateWithLifecycle()
     // 选中的取消原因
-    val selectedCancelReason by viewModel.selectedCancelReason.collectAsState()
+    val selectedCancelReason by viewModel.selectedCancelReason.collectAsStateWithLifecycle()
 
     // 收集确认收货弹窗状态
     // 确认收货弹窗显示状态
-    val showConfirmDialog by viewModel.showConfirmDialog.collectAsState()
+    val showConfirmDialog by viewModel.showConfirmDialog.collectAsStateWithLifecycle()
 
     // 收集再次购买和商品评论弹窗状态
     // 再次购买弹窗显示状态
-    val rebuyModalVisible by viewModel.rebuyModalVisible.collectAsState()
+    val rebuyModalVisible by viewModel.rebuyModalVisible.collectAsStateWithLifecycle()
     // 商品评论弹窗显示状态
-    val commentModalVisible by viewModel.commentModalVisible.collectAsState()
+    val commentModalVisible by viewModel.commentModalVisible.collectAsStateWithLifecycle()
     // 再次购买的购物车列表
-    val rebuyCartList by viewModel.rebuyCartList.collectAsState()
+    val rebuyCartList by viewModel.rebuyCartList.collectAsStateWithLifecycle()
     // 再次购买的当前订单
-    val rebuyCurrentOrder: Order? by viewModel.rebuyCurrentOrder.collectAsState()
+    val rebuyCurrentOrder: Order? by viewModel.rebuyCurrentOrder.collectAsStateWithLifecycle()
     // 商品评论的购物车列表
-    val commentCartList by viewModel.commentCartList.collectAsState()
+    val commentCartList by viewModel.commentCartList.collectAsStateWithLifecycle()
     // 商品评论的当前订单
-    val commentCurrentOrder: Order? by viewModel.commentCurrentOrder.collectAsState()
+    val commentCurrentOrder: Order? by viewModel.commentCurrentOrder.collectAsStateWithLifecycle()
 
     // 获取标签页状态提供者
     val tabStateProvider: @Composable (Int) -> OrderTabState = { index ->
-        val uiState by viewModel.uiStates[index].collectAsState()
-        val orderList by viewModel.listDataMap[index].collectAsState()
-        val isRefreshing by viewModel.refreshingStates[index].collectAsState()
-        val loadMoreState by viewModel.loadMoreStates[index].collectAsState()
+        val uiState by viewModel.uiStates[index].collectAsStateWithLifecycle()
+        val orderList by viewModel.listDataMap[index].collectAsStateWithLifecycle()
+        val isRefreshing by viewModel.refreshingStates[index].collectAsStateWithLifecycle()
+        val loadMoreState by viewModel.loadMoreStates[index].collectAsStateWithLifecycle()
 
         OrderTabState(
             uiState = uiState,

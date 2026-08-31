@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "ktlint:standard:function-naming")
 
 package com.joker.coolmall.feature.order.view
 
@@ -12,13 +12,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.designsystem.component.EndRow
 import com.joker.coolmall.core.designsystem.component.VerticalList
@@ -67,21 +67,21 @@ internal fun OrderDetailRoute(
     ),
 ) {
     // UI状态
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 转换后的购物车列表
-    val cartList by viewModel.cartList.collectAsState()
+    val cartList by viewModel.cartList.collectAsStateWithLifecycle()
     // 取消订单弹窗显示状态
-    val cancelModalVisible by viewModel.cancelModalVisible.collectAsState()
+    val cancelModalVisible by viewModel.cancelModalVisible.collectAsStateWithLifecycle()
     // 取消原因弹出层UI状态
-    val cancelReasonsModalUiState by viewModel.cancelReasonsModalUiState.collectAsState()
+    val cancelReasonsModalUiState by viewModel.cancelReasonsModalUiState.collectAsStateWithLifecycle()
     // 选中的取消原因
-    val selectedCancelReason by viewModel.selectedCancelReason.collectAsState()
+    val selectedCancelReason by viewModel.selectedCancelReason.collectAsStateWithLifecycle()
     // 确认收货弹窗显示状态
-    val showConfirmDialog by viewModel.showConfirmDialog.collectAsState()
+    val showConfirmDialog by viewModel.showConfirmDialog.collectAsStateWithLifecycle()
     // 再次购买弹窗显示状态
-    val rebuyModalVisible by viewModel.rebuyModalVisible.collectAsState()
+    val rebuyModalVisible by viewModel.rebuyModalVisible.collectAsStateWithLifecycle()
     // 商品评论弹窗显示状态
-    val commentModalVisible by viewModel.commentModalVisible.collectAsState()
+    val commentModalVisible by viewModel.commentModalVisible.collectAsStateWithLifecycle()
     OrderDetailScreen(
         uiState = uiState,
         cartList = cartList,
