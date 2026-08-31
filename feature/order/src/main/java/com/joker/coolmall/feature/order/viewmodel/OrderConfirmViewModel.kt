@@ -329,6 +329,11 @@ class OrderConfirmViewModel @Inject constructor(
      * @author Joker.X
      */
     fun showCouponModal() {
+        val coupons = (uiState.value as? BaseNetWorkUiState.Success)?.data?.userCoupon
+        if (coupons.isNullOrEmpty()) {
+            ToastUtils.showWarning(R.string.no_available_coupon)
+            return
+        }
         _couponModalVisible.value = true
     }
 

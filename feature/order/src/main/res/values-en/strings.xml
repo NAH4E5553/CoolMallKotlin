@@ -73,6 +73,7 @@
     <string name="select_coupon">Select Coupon</string>
     <string name="coupon">Coupon</string>
     <string name="coupon_select">Select</string>
+    <string name="no_available_coupon">There are currently no coupons available!</string>
     <string name="coupon_discount">Coupon Discount</string>
     <string name="total">Total</string>
     <string name="order_remark_title">Order Remark</string>

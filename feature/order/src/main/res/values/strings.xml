@@ -73,6 +73,7 @@
     <string name="select_coupon">选择优惠券</string>
     <string name="coupon">优惠券</string>
     <string name="coupon_select">选择</string>
+    <string name="no_available_coupon">当前没有可使用的优惠券！</string>
     <string name="coupon_discount">优惠券折扣</string>
     <string name="total">合计</string>
     <string name="order_remark_title">订单备注</string>

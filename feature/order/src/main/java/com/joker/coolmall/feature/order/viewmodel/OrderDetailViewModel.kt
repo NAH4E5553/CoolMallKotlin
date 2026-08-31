@@ -9,9 +9,11 @@ import com.joker.coolmall.core.model.entity.Cart
 import com.joker.coolmall.core.model.entity.CartGoodsSpec
 import com.joker.coolmall.core.model.entity.DictItem
 import com.joker.coolmall.core.model.entity.Order
+import com.joker.coolmall.core.model.entity.OrderGoods
 import com.joker.coolmall.core.model.request.CancelOrderRequest
 import com.joker.coolmall.core.model.request.DictDataRequest
 import com.joker.coolmall.core.model.response.NetworkResponse
+import com.joker.coolmall.feature.order.model.uncommentedGoods
 import com.joker.coolmall.navigation.RefreshResult
 import com.joker.coolmall.navigation.goods.GoodsRoutes
 import com.joker.coolmall.navigation.navigate
@@ -59,6 +61,9 @@ class OrderDetailViewModel @AssistedInject constructor(
 
     private val _cartList = MutableStateFlow<List<Cart>>(emptyList())
     val cartList = _cartList.asStateFlow()
+
+    private val _commentCartList = MutableStateFlow<List<Cart>>(emptyList())
+    val commentCartList = _commentCartList.asStateFlow()
 
     /**
      * 取消原因选择弹窗的显示状态
@@ -120,6 +125,7 @@ class OrderDetailViewModel @AssistedInject constructor(
      */
     override fun onRequestSuccess(data: Order) {
         _cartList.value = convertOrderGoodsToCart(data)
+        _commentCartList.value = convertOrderGoodsToCart(data.uncommentedGoods())
         super.setSuccessState(data)
     }
 
@@ -418,7 +424,8 @@ class OrderDetailViewModel @AssistedInject constructor(
      * @author Joker.X
      */
     fun toOrderComment() {
-        val cartList = _cartList.value
+        val cartList = _commentCartList.value
+        if (cartList.isEmpty()) return
         if (cartList.size > 1) {
             // 多个商品时显示弹窗让用户选择
             showCommentModal()
@@ -448,9 +455,11 @@ class OrderDetailViewModel @AssistedInject constructor(
      * 将Order中的goodsList转换为Cart类型的列表
      * 参考OrderConfirmViewModel中的处理方法
      */
-    private fun convertOrderGoodsToCart(order: Order): List<Cart> = order.goodsList?.let { goodsList ->
+    private fun convertOrderGoodsToCart(order: Order): List<Cart> = convertOrderGoodsToCart(order.goodsList.orEmpty())
+
+    private fun convertOrderGoodsToCart(goodsList: List<OrderGoods>): List<Cart> = goodsList.let {
         // 按商品ID分组
-        val groupedGoods = goodsList.groupBy { it.goodsId }
+        val groupedGoods = it.groupBy { goods -> goods.goodsId }
 
         // 为每个商品ID创建一个Cart对象
         groupedGoods.map { (goodsId, items) ->
@@ -485,7 +494,7 @@ class OrderDetailViewModel @AssistedInject constructor(
                 this.spec = allSpecs
             }
         }
-    } ?: emptyList()
+    }
 
     /**
      * Assisted Factory

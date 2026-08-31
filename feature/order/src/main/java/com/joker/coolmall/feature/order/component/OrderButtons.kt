@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming")
+
 package com.joker.coolmall.feature.order.component
 
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +12,7 @@ import com.joker.coolmall.core.model.entity.Order
 import com.joker.coolmall.core.ui.component.button.AppButtonBordered
 import com.joker.coolmall.core.ui.component.button.ButtonType
 import com.joker.coolmall.feature.order.R
+import com.joker.coolmall.feature.order.model.hasUncommentedGoods
 
 /**
  * 订单按钮组件，用于显示订单相关的操作按钮
@@ -41,13 +44,13 @@ fun OrderButtons(
     if (order.status == 0) {
         OrderButton(
             text = stringResource(id = R.string.cancel_order),
-            onClick = onCancelClick
+            onClick = onCancelClick,
         )
         SpaceHorizontalSmall()
         OrderButton(
             text = stringResource(id = R.string.pay_now),
             onClick = onPayClick,
-            isPrimary = true
+            isPrimary = true,
         )
     }
 
@@ -55,7 +58,7 @@ fun OrderButtons(
     if (order.status == 1 || order.status == 2) {
         OrderButton(
             text = stringResource(id = R.string.order_refund_button),
-            onClick = onRefundClick
+            onClick = onRefundClick,
         )
         SpaceHorizontalSmall()
     }
@@ -64,7 +67,7 @@ fun OrderButtons(
     if (order.status == 2) {
         OrderButton(
             text = stringResource(id = R.string.confirm_receive),
-            onClick = onConfirmClick
+            onClick = onConfirmClick,
         )
         SpaceHorizontalSmall()
     }
@@ -74,7 +77,7 @@ fun OrderButtons(
         OrderButton(
             text = stringResource(id = R.string.view_logistics),
             onClick = onLogisticsClick,
-            isPrimary = order.status == 2
+            isPrimary = order.status == 2,
         )
         SpaceHorizontalSmall()
     }
@@ -83,7 +86,8 @@ fun OrderButtons(
     if (order.status == 3 || order.status == 4) {
         OrderButton(
             text = stringResource(id = R.string.comment_now),
-            onClick = onCommentClick
+            onClick = onCommentClick,
+            enabled = order.hasUncommentedGoods(),
         )
         SpaceHorizontalSmall()
     }
@@ -92,7 +96,7 @@ fun OrderButtons(
         OrderButton(
             text = stringResource(id = R.string.rebuy_now),
             onClick = onRebuyClick,
-            isPrimary = true
+            isPrimary = true,
         )
     }
 }
@@ -113,7 +117,8 @@ private fun OrderButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     type: ButtonType = ButtonType.DEFAULT,
-    isPrimary: Boolean = false
+    isPrimary: Boolean = false,
+    enabled: Boolean = true,
 ) {
     AppButtonBordered(
         text = text,
@@ -122,6 +127,7 @@ private fun OrderButton(
         type = if (isPrimary) type else ButtonType.DEFAULT,
         color = if (!isPrimary) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f) else null,
         height = 30.dp,
-        textStyle = MaterialTheme.typography.bodySmall
+        textStyle = MaterialTheme.typography.bodySmall,
+        enabled = enabled,
     )
 }

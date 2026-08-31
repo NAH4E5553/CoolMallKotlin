@@ -8,6 +8,7 @@ import com.joker.coolmall.core.model.entity.Address
 import com.joker.coolmall.core.model.entity.Cart
 import com.joker.coolmall.core.model.entity.CartGoodsSpec
 import com.joker.coolmall.core.model.entity.ConfirmOrder
+import com.joker.coolmall.core.model.entity.Coupon
 import com.joker.coolmall.core.model.entity.Order
 import com.joker.coolmall.core.model.entity.SelectedGoods
 import com.joker.coolmall.core.model.response.NetworkResponse
@@ -64,6 +65,7 @@ class OrderConfirmViewModelTest {
             flowOf(NetworkResponse(data = ConfirmOrder(defaultAddress = Address(id = ADDRESS_ID))))
 
         mockkObject(MMKVUtils)
+        every { MMKVUtils.getString(any(), any()) } returns ""
         every { MMKVUtils.remove(any()) } just runs
 
         mockkObject(ToastUtils)
@@ -173,6 +175,53 @@ class OrderConfirmViewModelTest {
         assertFalse(viewModel.isSubmitting.value)
         verify(exactly = 1) { ToastUtils.showError("create failed") }
         verify(exactly = 0) { NavigationService.navigateAndCloseCurrent(any(), any()) }
+    }
+
+    @Test
+    fun `empty coupon list shows warning without opening modal`() = runTest(mainDispatcherRule.dispatcher) {
+        every { pageRepository.getConfirmOrder() } returns flowOf(
+            NetworkResponse(data = ConfirmOrder(defaultAddress = Address(id = ADDRESS_ID), userCoupon = emptyList())),
+        )
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.showCouponModal()
+
+        assertFalse(viewModel.couponModalVisible.value)
+        verify(exactly = 1) { ToastUtils.showWarning(R.string.no_available_coupon) }
+    }
+
+    @Test
+    fun `missing coupon list shows warning without opening modal`() = runTest(mainDispatcherRule.dispatcher) {
+        every { pageRepository.getConfirmOrder() } returns flowOf(
+            NetworkResponse(data = ConfirmOrder(defaultAddress = Address(id = ADDRESS_ID), userCoupon = null)),
+        )
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.showCouponModal()
+
+        assertFalse(viewModel.couponModalVisible.value)
+        verify(exactly = 1) { ToastUtils.showWarning(R.string.no_available_coupon) }
+    }
+
+    @Test
+    fun `available coupon opens selection modal without warning`() = runTest(mainDispatcherRule.dispatcher) {
+        every { pageRepository.getConfirmOrder() } returns flowOf(
+            NetworkResponse(
+                data = ConfirmOrder(
+                    defaultAddress = Address(id = ADDRESS_ID),
+                    userCoupon = listOf(Coupon(id = 1)),
+                ),
+            ),
+        )
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.showCouponModal()
+
+        assertTrue(viewModel.couponModalVisible.value)
+        verify(exactly = 0) { ToastUtils.showWarning(R.string.no_available_coupon) }
     }
 
     private fun cacheCheckoutData(selectedGoods: List<SelectedGoods>, carts: List<Cart>? = null) {

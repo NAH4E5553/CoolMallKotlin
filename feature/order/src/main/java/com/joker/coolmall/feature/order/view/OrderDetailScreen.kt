@@ -70,6 +70,8 @@ internal fun OrderDetailRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 转换后的购物车列表
     val cartList by viewModel.cartList.collectAsStateWithLifecycle()
+    // 未评价商品列表
+    val commentCartList by viewModel.commentCartList.collectAsStateWithLifecycle()
     // 取消订单弹窗显示状态
     val cancelModalVisible by viewModel.cancelModalVisible.collectAsStateWithLifecycle()
     // 取消原因弹出层UI状态
@@ -85,6 +87,7 @@ internal fun OrderDetailRoute(
     OrderDetailScreen(
         uiState = uiState,
         cartList = cartList,
+        commentCartList = commentCartList,
         cancelModalVisible = cancelModalVisible,
         cancelReasonsModalUiState = cancelReasonsModalUiState,
         selectedCancelReason = selectedCancelReason,
@@ -156,6 +159,7 @@ internal fun OrderDetailRoute(
 internal fun OrderDetailScreen(
     uiState: BaseNetWorkUiState<Order> = BaseNetWorkUiState.Loading,
     cartList: List<Cart> = emptyList(),
+    commentCartList: List<Cart> = emptyList(),
     cancelModalVisible: Boolean = false,
     cancelReasonsModalUiState: BaseNetWorkUiState<List<DictItem>> = BaseNetWorkUiState.Loading,
     selectedCancelReason: DictItem? = null,
@@ -287,7 +291,7 @@ internal fun OrderDetailScreen(
         visible = commentModalVisible,
         title = stringResource(R.string.select_goods_to_comment),
         buttonText = stringResource(R.string.go_to_comment),
-        cartList = cartList,
+        cartList = commentCartList,
         onDismiss = onCommentModalDismiss,
         onItemButtonClick = onCommentGoodsClick,
     )
