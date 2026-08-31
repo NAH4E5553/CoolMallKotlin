@@ -47,6 +47,6 @@ jobs:
           upload_artifacts: "false"
           sticky_summary: "true"
           incremental: "true"
-          checkpoint_range: "false"
+          checkpoint_range: "true"
           route_severity_below: low
           route_categories: style,documentation

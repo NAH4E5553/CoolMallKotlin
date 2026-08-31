@@ -16,7 +16,7 @@ OpenCodeReview 是现有 Android CI 之外的自动二次审查，只提供 PR �
 - PR 被创建、更新、重新打开或转为 Ready for review；
 - Diff 包含 Kotlin、Gradle Kotlin DSL、Manifest、values/xml 安全配置、OCR 规则或本工作流。
 
-同一 PR 推送新提交时会取消旧审查并重新运行。试用阶段不监听 PR 评论命令，也不在合并后的 `main` Push 上运行。
+同一 PR 推送新提交时会取消旧审查并重新运行。首次运行审查 merge-base 到当前 head 的完整范围；成功记录检查点后，后续推送只审查上次已覆盖 head 到新 head 的增量。检查点缺失、基线或审查配置变化、祖先关系无法证明时自动回退到完整范围。试用阶段不监听 PR 评论命令，也不在合并后的 `main` Push 上运行。
 
 ## 历史 PR 手动审查
 
