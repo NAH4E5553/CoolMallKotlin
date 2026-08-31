@@ -132,6 +132,8 @@ UI -> ViewModel -> Repository -> DataSource -> Network/Database/DataStore
 - `ExampleUnitTest` 只是模板，不代表业务逻辑已有回归保护。
 - 导航修改验证参数、Back Stack 和结果；Room Schema 修改验证 Migration；UI 修改验证相关主题、字体缩放、系统 Insets 和交互边界。
 - 原有失败与本次失败分开报告；不能用局部编译替代提交前完整检查。
+- OpenCodeReview 仅作为非阻塞的自动二次审查，不替代现有四项强制 CI、人工判断或设备回归；有效的高风险评论必须在合并前处理，误报需要用代码或测试证据说明。
+- OpenCodeReview 的模型地址、Token 和启用开关只能通过 GitHub Actions Secrets/Variables 配置，不得写入仓库、PR、日志或测试数据；具体试用边界见 `.github/OPEN_CODE_REVIEW.md`。
 
 ## Git、审查与架构变更
 
