@@ -4,7 +4,6 @@ package com.joker.coolmall.feature.auth.component
 
 import android.graphics.BitmapFactory
 import android.util.Base64
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +36,10 @@ import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
 import com.joker.coolmall.core.model.entity.Captcha
 import com.joker.coolmall.core.ui.component.button.AppButton
 import com.joker.coolmall.core.ui.component.modal.BottomModal
+import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.feature.auth.R
+
+private const val TAG = "ImageCaptchaDialog"
 
 /**
  * 图片验证码对话框组件
@@ -167,8 +169,8 @@ fun CaptchaImage(modifier: Modifier = Modifier, captcha: Captcha, onRefresh: () 
     // 尝试解码Base64数据
     val decodedBytes = try {
         Base64.decode(pureBase64, Base64.DEFAULT)
-    } catch (e: Exception) {
-        Log.e("CaptchaImage", "Base64解码失败: ${e.message}")
+    } catch (exception: Exception) {
+        LogUtils.e(TAG, "Failed to decode captcha image", exception)
         null
     }
 
@@ -195,8 +197,8 @@ fun CaptchaImage(modifier: Modifier = Modifier, captcha: Captcha, onRefresh: () 
     // 尝试创建位图
     val bitmap = try {
         BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-    } catch (e: Exception) {
-        Log.e("CaptchaImage", "位图创建失败: ${e.message}")
+    } catch (exception: Exception) {
+        LogUtils.e(TAG, "Failed to create captcha bitmap", exception)
         null
     }
 

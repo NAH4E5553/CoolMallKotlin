@@ -578,6 +578,16 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 - 删除无效变量、重复日志和已失效注释。
 - 评估过大的 Vector Drawable 是否需要栅格化资源。
 
+实施结果（2026-08-31）：
+
+- `AboutScreen` 的滚动透明度比例已改为通过 `derivedStateOf` 派生，超过渐变阈值后不再随每个滚动像素重复提交相同值。
+- Feature 生产源码中剩余的 `printStackTrace()` 和直接 `android.util.Log` 已替换为项目 `LogUtils`；商品足迹写入同时保留协程取消语义。
+- 订单总件数的中英文资源已改用 `plurals`，英文可以正确区分单数和复数。
+- Feature 中用户可见资源的三个点 `...` 已统一为排版省略号 `…`。
+- 商品优惠券的多个格式参数已改为位置参数，订单页弃用的 `ScrollableTabRow` 已替换为 Material 3 的 `PrimaryScrollableTabRow`。
+- `android.enableJetifier=true` 经确认继续保留，以兼容可能仍引用旧 Support Library 的第三方二进制依赖；对应 AGP 弃用告警作为已接受告警。
+- Compose `Modifier` 参数顺序不做全仓机械改写；仅在后续修改相关组件时渐进统一。当前未发现 Feature 中超过 50KB 的 Vector Drawable，因此不做资源格式转换。
+
 ## 7. 测试计划
 
 每批修改至少补充以下测试：

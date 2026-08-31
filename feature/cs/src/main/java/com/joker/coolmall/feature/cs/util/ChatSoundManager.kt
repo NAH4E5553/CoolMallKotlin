@@ -3,7 +3,10 @@ package com.joker.coolmall.feature.cs.util
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import com.joker.coolmall.core.util.log.LogUtils
 import com.joker.coolmall.feature.cs.R
+
+private const val TAG = "ChatSoundManager"
 
 /**
  * 聊天音效管理器
@@ -52,8 +55,8 @@ class ChatSoundManager(private val context: Context) {
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (exception: Exception) {
+            LogUtils.e(TAG, "Failed to initialize chat sounds", exception)
         }
     }
 
@@ -68,9 +71,9 @@ class ChatSoundManager(private val context: Context) {
                 sendSoundId,
                 1.0f, // 左声道音量
                 1.0f, // 右声道音量
-                1,    // 优先级
-                0,    // 循环次数（0表示不循环）
-                1.0f  // 播放速率
+                1, // 优先级
+                0, // 循环次数（0表示不循环）
+                1.0f, // 播放速率
             )
         }
     }
@@ -86,9 +89,9 @@ class ChatSoundManager(private val context: Context) {
                 receiveSoundId,
                 1.0f, // 左声道音量
                 1.0f, // 右声道音量
-                1,    // 优先级
-                0,    // 循环次数（0表示不循环）
-                1.0f  // 播放速率
+                1, // 优先级
+                0, // 循环次数（0表示不循环）
+                1.0f, // 播放速率
             )
         }
     }
