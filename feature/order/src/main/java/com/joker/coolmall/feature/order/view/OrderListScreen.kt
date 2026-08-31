@@ -32,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joker.coolmall.core.common.base.state.BaseNetWorkListUiState
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
 import com.joker.coolmall.core.common.base.state.LoadMoreState
-import com.joker.coolmall.core.designsystem.component.CenterColumn
 import com.joker.coolmall.core.designsystem.component.EndRow
 import com.joker.coolmall.core.designsystem.component.HorizontalScroll
 import com.joker.coolmall.core.designsystem.theme.AppTheme
@@ -547,11 +546,12 @@ private fun OrderCard(
             }
 
             // 右侧价格和数量信息
-            CenterColumn(
+            Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(112.dp)
                     .padding(end = SpacePaddingMedium),
+                horizontalAlignment = Alignment.End,
             ) {
                 PriceText(
                     price = order.price,
