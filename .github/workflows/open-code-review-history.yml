@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: open-code-review-history
@@ -67,7 +68,6 @@ jobs:
         with:
           ref: ${{ steps.pull-request.outputs.base_sha }}
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Prepare trusted review inputs
         env:
@@ -233,7 +233,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const result = JSON.parse(fs.readFileSync(process.env.RESULT_PATH, 'utf8'));
+            let result;
+            try {
+              result = JSON.parse(fs.readFileSync(process.env.RESULT_PATH, 'utf8'));
+            } catch (error) {
+              throw new Error(`Unable to read OpenCodeReview result: ${error.message}`);
+            }
             const pullNumber = Number(process.env.PR_NUMBER);
             const marker = `<!-- ocr-history-pr-${pullNumber} -->`;
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
