@@ -14,13 +14,23 @@ OpenCodeReview 是现有 Android CI 之外的自动二次审查，只提供 PR �
 - PR 不是 Draft；
 - PR 分支来自当前仓库，不是外部 Fork；
 - PR 被创建、更新、重新打开或转为 Ready for review；
-- Diff 包含 Kotlin、Gradle Kotlin DSL、Manifest、values/xml 安全配置、OCR 规则或本工作流。
+- Diff 包含 Kotlin、Gradle Kotlin DSL、Manifest、values/xml 安全配置、CI 脚本、Android CI 工作流、OCR 规则或 OCR 工作流。
 
 同一 PR 推送新提交时会取消旧审查并重新运行。首次运行审查 merge-base 到当前 head 的完整范围；成功记录检查点后，后续推送只审查上次已覆盖 head 到新 head 的增量。检查点缺失、基线或审查配置变化、祖先关系无法证明时自动回退到完整范围。试用阶段不监听 PR 评论命令，也不在合并后的 `main` Push 上运行。
 
+## 日常 PR 流程
+
+Android CI 与 OpenCodeReview 在同一开发 PR 中并行运行。Android CI 负责构建、单元测试、Lint 和格式等确定性检查；OpenCodeReview 负责补充语义和风险审查，二者不互相替代。
+
+- 正常情况下在 OCR 完成并人工确认意见后再合并 PR。
+- 属于当前 PR 的真实问题直接在同一分支修复；新提交通过增量审查和 CI 复查后，只合并该 PR 一次。
+- 误报或已接受风险使用调用链、接口契约或测试证据记录结论，不为消除评论盲目修改代码。
+- 只有问题在合并后才被发现，或修复明显超出原 PR 范围时，才建立独立后续 PR。
+- 模型服务或工具异常不改变 Android CI 的必需检查地位；先重试 OCR，仍不可用时记录人工审查结论。
+
 ## 历史 PR 手动审查
 
-`.github/workflows/open-code-review-history.yml` 提供仅限仓库写权限成员使用的手动入口，不监听评论命令，也不会自动遍历历史 PR。它从 GitHub API 获取目标 PR 当时的 base/head SHA，只读取该精确 Git 范围，不执行历史分支中的 Gradle、脚本或其他代码。
+`.github/workflows/open-code-review-history.yml` 只用于 OCR 接入前的历史补查或明确发起的专项审计，不属于日常 PR 流程。它提供仅限仓库写权限成员使用的手动入口，不监听评论命令，也不会自动遍历历史 PR。它从 GitHub API 获取目标 PR 当时的 base/head SHA，只读取该精确 Git 范围，不执行历史分支中的 Gradle、脚本或其他代码。
 
 在 GitHub `Actions -> OpenCodeReview History -> Run workflow` 中填写：
 
