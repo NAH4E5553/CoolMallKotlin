@@ -12,6 +12,7 @@ on:
       - "**/src/main/res/xml/**"
       - ".opencodereview/**"
       - ".github/workflows/open-code-review.yml"
+      - ".github/workflows/open-code-review-history.yml"
 
 permissions:
   contents: read
@@ -46,6 +47,6 @@ jobs:
           upload_artifacts: "false"
           sticky_summary: "true"
           incremental: "true"
-          checkpoint_range: "false"
+          checkpoint_range: "true"
           route_severity_below: low
           route_categories: style,documentation
