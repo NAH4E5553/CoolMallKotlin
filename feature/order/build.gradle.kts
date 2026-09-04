@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.coolmall.android.feature)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -10,9 +9,9 @@ android {
 dependencies {
     // 支付宝支付
     implementation(libs.alipaysdk.android)
-    // kotlin序列化
-    implementation(libs.kotlinx.serialization.json)
 
+    // 测试中用于序列化订单缓存数据
+    testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
 }
