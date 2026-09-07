@@ -1,13 +1,12 @@
 package com.joker.coolmall.feature.auth.viewmodel
 
-import android.content.Context
 import com.joker.coolmall.core.data.repository.AuthRepository
 import com.joker.coolmall.core.data.state.AppState
 import com.joker.coolmall.core.model.entity.Captcha
 import com.joker.coolmall.core.model.response.NetworkResponse
-import com.joker.coolmall.core.util.notification.NotificationUtil
 import com.joker.coolmall.core.util.storage.MMKVUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
+import com.joker.coolmall.feature.auth.notification.VerificationCodeNotifier
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -37,7 +36,7 @@ class SmsLoginViewModelTest {
 
     private lateinit var appState: AppState
     private lateinit var authRepository: AuthRepository
-    private lateinit var context: Context
+    private lateinit var verificationCodeNotifier: VerificationCodeNotifier
 
     @Before
     fun setUp() {
@@ -49,12 +48,9 @@ class SmsLoginViewModelTest {
         every { ToastUtils.showError(any<CharSequence>()) } just runs
         every { ToastUtils.showError(any<Int>()) } just runs
 
-        mockkObject(NotificationUtil)
-        every { NotificationUtil.sendVerificationCodeNotification(any(), any(), any()) } returns 1
-
         appState = mockk(relaxed = true)
         authRepository = mockk()
-        context = mockk(relaxed = true)
+        verificationCodeNotifier = mockk(relaxed = true)
     }
 
     @After
@@ -145,14 +141,33 @@ class SmsLoginViewModelTest {
         assertFalse(viewModel.isSendingCode.value)
         assertFalse(viewModel.showImageCodePopup.value)
         verify(exactly = 1) {
-            NotificationUtil.sendVerificationCodeNotification(context, "1234", any())
+            verificationCodeNotifier.notify("1234")
         }
+    }
+
+    @Test
+    fun `failed SMS request does not notify and restores submission state`() = runTest(mainDispatcherRule.dispatcher) {
+        every { authRepository.getCaptcha() } returns flowOf(NetworkResponse(data = CAPTCHA))
+        every { authRepository.getSmsCode(any()) } returns
+            flowOf(NetworkResponse(code = 400, message = "invalid captcha"))
+        val viewModel = createViewModel()
+        viewModel.updatePhone(VALID_PHONE)
+        viewModel.onSendCodeButtonClick()
+        advanceUntilIdle()
+
+        viewModel.onImageCodeConfirm("A1B2")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isSendingCode.value)
+        assertTrue(viewModel.showImageCodePopup.value)
+        verify(exactly = 0) { verificationCodeNotifier.notify(any()) }
+        verify(exactly = 1) { ToastUtils.showError("invalid captcha") }
     }
 
     private fun createViewModel() = SmsLoginViewModel(
         appState = appState,
         authRepository = authRepository,
-        context = context,
+        verificationCodeNotifier = verificationCodeNotifier,
     )
 
     private companion object {

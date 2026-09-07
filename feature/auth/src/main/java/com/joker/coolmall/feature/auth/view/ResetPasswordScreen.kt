@@ -9,10 +9,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,9 +26,13 @@ import com.joker.coolmall.core.designsystem.component.StartRow
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalMedium
 import com.joker.coolmall.core.designsystem.theme.SpaceVerticalXLarge
+import com.joker.coolmall.core.model.entity.Captcha
 import com.joker.coolmall.core.ui.component.button.AppButton
+import com.joker.coolmall.core.util.permission.PermissionUtils
+import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.feature.auth.R
 import com.joker.coolmall.feature.auth.component.AnimatedAuthPage
+import com.joker.coolmall.feature.auth.component.ImageCaptchaDialog
 import com.joker.coolmall.feature.auth.component.PasswordInputField
 import com.joker.coolmall.feature.auth.component.PhoneInputField
 import com.joker.coolmall.feature.auth.component.VerificationCodeField
@@ -41,6 +47,7 @@ import com.joker.coolmall.navigation.navigateBack
  */
 @Composable
 internal fun ResetPasswordRoute(viewModel: ResetPasswordViewModel = hiltViewModel()) {
+    val context = LocalContext.current
     // 收集手机号输入
     val phone by viewModel.phone.collectAsStateWithLifecycle()
     // 收集新密码输入
@@ -49,17 +56,38 @@ internal fun ResetPasswordRoute(viewModel: ResetPasswordViewModel = hiltViewMode
     val confirmPassword by viewModel.confirmPassword.collectAsStateWithLifecycle()
     // 收集验证码输入
     val verificationCode by viewModel.verificationCode.collectAsStateWithLifecycle()
+    val codeState by viewModel.codeState.collectAsStateWithLifecycle()
+    val isPhoneValid by viewModel.isPhoneValid.collectAsStateWithLifecycle(initialValue = false)
+
+    // 与短信登录保持一致：验证码通过通知展示，先获取通知权限。
+    val onSendVerificationCodeWithPermission = {
+        PermissionUtils.requestNotificationPermission(context) { granted ->
+            if (granted) {
+                viewModel.sendVerificationCode()
+            } else {
+                ToastUtils.showError(R.string.notification_permission_required)
+            }
+        }
+    }
 
     ResetPasswordScreen(
         phone = phone,
         newPassword = newPassword,
         confirmPassword = confirmPassword,
         verificationCode = verificationCode,
+        showImageCodePopup = codeState.showImageCodePopup,
+        captcha = codeState.captcha,
+        isLoadingCaptcha = codeState.isLoadingCaptcha,
+        isSendingCode = codeState.isSendingCode,
+        isPhoneValid = isPhoneValid,
         onPhoneChange = viewModel::updatePhone,
         onNewPasswordChange = viewModel::updateNewPassword,
         onConfirmPasswordChange = viewModel::updateConfirmPassword,
         onVerificationCodeChange = viewModel::updateVerificationCode,
-        onSendVerificationCode = viewModel::sendVerificationCode,
+        onSendVerificationCode = onSendVerificationCodeWithPermission,
+        onHideImageCodePopup = viewModel::onHideImageCodePopup,
+        onImageCodeConfirm = viewModel::onImageCodeConfirm,
+        onRefreshCaptcha = viewModel::getCaptcha,
         onResetPasswordClick = viewModel::resetPassword,
     )
 }
@@ -71,11 +99,19 @@ internal fun ResetPasswordRoute(viewModel: ResetPasswordViewModel = hiltViewMode
  * @param newPassword 新密码
  * @param confirmPassword 确认密码
  * @param verificationCode 验证码
+ * @param showImageCodePopup 是否显示图形验证码弹窗
+ * @param captcha 图形验证码数据
+ * @param isLoadingCaptcha 是否正在获取图形验证码
+ * @param isSendingCode 是否正在发送短信验证码
+ * @param isPhoneValid 手机号是否合法
  * @param onPhoneChange 手机号变更回调
  * @param onNewPasswordChange 新密码变更回调
  * @param onConfirmPasswordChange 确认密码变更回调
  * @param onVerificationCodeChange 验证码变更回调
  * @param onSendVerificationCode 发送验证码回调
+ * @param onHideImageCodePopup 关闭图形验证码弹窗
+ * @param onImageCodeConfirm 提交图形验证码
+ * @param onRefreshCaptcha 刷新图形验证码
  * @param onResetPasswordClick 重置密码按钮点击回调
  * @author Joker.X
  */
@@ -86,11 +122,19 @@ internal fun ResetPasswordScreen(
     newPassword: String = "",
     confirmPassword: String = "",
     verificationCode: String = "",
+    showImageCodePopup: Boolean = false,
+    captcha: Captcha = Captcha(),
+    isLoadingCaptcha: Boolean = false,
+    isSendingCode: Boolean = false,
+    isPhoneValid: Boolean = false,
     onPhoneChange: (String) -> Unit = {},
     onNewPasswordChange: (String) -> Unit = {},
     onConfirmPasswordChange: (String) -> Unit = {},
     onVerificationCodeChange: (String) -> Unit = {},
     onSendVerificationCode: () -> Unit = {},
+    onHideImageCodePopup: () -> Unit = {},
+    onImageCodeConfirm: (String) -> Unit = {},
+    onRefreshCaptcha: () -> Unit = {},
     onResetPasswordClick: () -> Unit = {},
 ) {
     AnimatedAuthPage(
@@ -103,12 +147,25 @@ internal fun ResetPasswordScreen(
             newPassword = newPassword,
             confirmPassword = confirmPassword,
             verificationCode = verificationCode,
+            canSendCode = isPhoneValid && !isLoadingCaptcha && !isSendingCode,
             onPhoneChange = onPhoneChange,
             onNewPasswordChange = onNewPasswordChange,
             onConfirmPasswordChange = onConfirmPasswordChange,
             onVerificationCodeChange = onVerificationCodeChange,
             onSendVerificationCode = onSendVerificationCode,
             onResetPasswordClick = onResetPasswordClick,
+        )
+    }
+
+    // 更换图片时清空组件内部的图形验证码输入，避免沿用旧图片的答案。
+    key(captcha.captchaId) {
+        ImageCaptchaDialog(
+            visible = showImageCodePopup,
+            captcha = captcha,
+            onDismiss = onHideImageCodePopup,
+            onConfirm = onImageCodeConfirm,
+            onRefreshCaptcha = onRefreshCaptcha,
+            isSubmitting = isSendingCode || isLoadingCaptcha,
         )
     }
 }
@@ -120,6 +177,7 @@ internal fun ResetPasswordScreen(
  * @param newPassword 新密码
  * @param confirmPassword 确认密码
  * @param verificationCode 验证码
+ * @param canSendCode 是否允许获取验证码
  * @param onPhoneChange 手机号变更回调
  * @param onNewPasswordChange 新密码变更回调
  * @param onConfirmPasswordChange 确认密码变更回调
@@ -134,6 +192,7 @@ private fun ResetPasswordContentView(
     newPassword: String,
     confirmPassword: String,
     verificationCode: String,
+    canSendCode: Boolean,
     onPhoneChange: (String) -> Unit,
     onNewPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
@@ -166,6 +225,7 @@ private fun ResetPasswordContentView(
         onSendVerificationCode = onSendVerificationCode,
         placeholder = stringResource(id = R.string.verification_code),
         nextAction = ImeAction.Next,
+        isPhoneValid = canSendCode,
     )
 
     Spacer(modifier = Modifier.height(30.dp))
