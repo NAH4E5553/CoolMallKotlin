@@ -1,22 +1,20 @@
 package com.joker.coolmall.feature.auth.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.joker.coolmall.core.common.base.viewmodel.BaseViewModel
 import com.joker.coolmall.core.data.repository.AuthRepository
 import com.joker.coolmall.core.data.state.AppState
 import com.joker.coolmall.core.model.entity.Auth
 import com.joker.coolmall.core.model.entity.Captcha
-import com.joker.coolmall.core.util.notification.NotificationUtil
 import com.joker.coolmall.core.util.storage.MMKVUtils
 import com.joker.coolmall.core.util.toast.ToastUtils
 import com.joker.coolmall.core.util.validation.ValidationUtil
 import com.joker.coolmall.feature.auth.R
+import com.joker.coolmall.feature.auth.notification.VerificationCodeNotifier
 import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.result.ResultHandler
 import com.joker.coolmall.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +32,7 @@ import kotlinx.coroutines.launch
 class SmsLoginViewModel @Inject constructor(
     private val appState: AppState,
     private val authRepository: AuthRepository,
-    @param:ApplicationContext private val context: Context,
+    private val verificationCodeNotifier: VerificationCodeNotifier,
 ) : BaseViewModel() {
 
     companion object {
@@ -195,10 +193,7 @@ class SmsLoginViewModel @Inject constructor(
             scope = viewModelScope,
             flow = authRepository.getSmsCode(params).asResult(),
             onData = { smsCode ->
-                NotificationUtil.sendVerificationCodeNotification(
-                    context = context,
-                    code = smsCode,
-                )
+                verificationCodeNotifier.notify(smsCode)
                 onHideImageCodePopup()
             },
             onFinally = {
