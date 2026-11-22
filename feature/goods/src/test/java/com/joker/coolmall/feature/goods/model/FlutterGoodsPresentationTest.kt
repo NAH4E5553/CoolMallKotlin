@@ -26,10 +26,27 @@ class FlutterGoodsPresentationTest {
 
     @Test
     fun `only displayed review information crosses the channel`() {
-        val comment = Comment(id = 8, userId = 32, orderId = 74, content = "Sample", starCount = 4, avatarUrl = "avatar", pics = listOf("review"))
+        val comment =
+            Comment(
+                id = 8,
+                userId = 32,
+                orderId = 74,
+                content = "Sample",
+                starCount = 4,
+                avatarUrl = "avatar",
+                pics = listOf("review"),
+            )
         val detail = GoodsDetail(goodsInfo = Goods(), comment = listOf(comment))
         assertEquals(
-            listOf(mapOf("author" to null, "text" to "Sample", "stars" to 4, "avatar" to "avatar", "images" to listOf("review"))),
+            listOf(
+                mapOf(
+                    "author" to null,
+                    "text" to "Sample",
+                    "stars" to 4,
+                    "avatar" to "avatar",
+                    "images" to listOf("review"),
+                ),
+            ),
             detail.presentation(null)["comments"],
         )
     }
