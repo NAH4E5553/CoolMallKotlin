@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Prepares the shared goods engine after the home destination has settled. */
+@Suppress("ktlint:standard:function-naming")
 @Composable
 fun GoodsDetailWarmup() {
     val application = LocalContext.current.applicationContext as Application
