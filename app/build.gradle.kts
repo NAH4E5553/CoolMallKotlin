@@ -82,6 +82,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.fragment.runtime)
     implementation(projects.core.designsystem)
     implementation(projects.core.util)
     implementation(projects.core.data)

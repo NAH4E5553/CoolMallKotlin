@@ -26,3 +26,16 @@
 -keep class com.tencent.tauth.** { *; }
 -keep class com.tencent.connect.** { *; }
 -dontwarn com.tencent.**
+
+# FlutterEngine invokes this generated entry point by name.
+-keep class io.flutter.plugins.GeneratedPluginRegistrant {
+    public static void registerWith(io.flutter.embedding.engine.FlutterEngine);
+}
+
+# FlutterBoostActivity and FlutterBoostUtils access these fields by name.
+-keepclassmembers class io.flutter.embedding.engine.renderer.FlutterRenderer {
+    boolean isDisplayingFlutterUi;
+}
+-keepclassmembers class io.flutter.plugin.platform.PlatformPlugin {
+    *** currentTheme;
+}

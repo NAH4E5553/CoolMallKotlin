@@ -32,6 +32,17 @@ dependencyResolutionManagement {
     repositories {
         google() // Google的Maven仓库
         mavenCentral() // Maven中央仓库
+        exclusiveContent {
+            forRepository { maven(rootDir.resolve("flutter_goods/build/host/outputs/repo")) }
+            filter {
+                includeGroup("com.joker.coolmall.fluttergoods")
+                includeGroup("com.idlefish.flutterboost")
+            }
+        }
+        exclusiveContent {
+            forRepository { maven("https://storage.googleapis.com/download.flutter.io") }
+            filter { includeGroup("io.flutter") }
+        }
         // JitPack 远程仓库：https://jitpack.io
         maven { url = uri("https://jitpack.io") }
     }

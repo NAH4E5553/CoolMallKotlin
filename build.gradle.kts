@@ -26,13 +26,13 @@ spotless {
 
     kotlin {
         target("**/*.kt")
-        targetExclude("**/build/**", "**/generated/**")
+        targetExclude("**/build/**", "**/generated/**", "flutter_goods/**")
         ktlint(libs.versions.ktlint.get())
     }
 
     kotlinGradle {
         target("**/*.gradle.kts")
-        targetExclude("**/build/**", "**/.gradle/**")
+        targetExclude("**/build/**", "**/.gradle/**", "flutter_goods/**")
         ktlint(libs.versions.ktlint.get())
     }
 }

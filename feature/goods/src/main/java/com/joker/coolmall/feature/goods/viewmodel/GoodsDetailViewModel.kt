@@ -34,6 +34,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +74,7 @@ class GoodsDetailViewModel @AssistedInject constructor(
     /**
      * 规格选择弹窗的显示状态
      */
+    private var specsRequest: Job? = null
     private val _specModalVisible = MutableStateFlow(false)
     val specModalVisible: StateFlow<Boolean> = _specModalVisible.asStateFlow()
 
@@ -166,16 +168,16 @@ class GoodsDetailViewModel @AssistedInject constructor(
      */
     fun loadGoodsSpecs() {
         // 如果 ui 状态为成功，则不重复加载
-        if (_specsModalUiState.value is BaseNetWorkUiState.Success) {
+        if (specsRequest?.isActive == true || _specsModalUiState.value is BaseNetWorkUiState.Success) {
             return
         }
-        ResultHandler.handleResultWithData(
+        _specsModalUiState.value = BaseNetWorkUiState.Loading
+        specsRequest = ResultHandler.handleResultWithData(
             scope = viewModelScope,
             flow = goodsRepository.getGoodsSpecList(
                 mapOf("goodsId" to goodsId),
             ).asResult(),
             showToast = false,
-            onLoading = { _specsModalUiState.value = BaseNetWorkUiState.Loading },
             onData = { data ->
                 _specsModalUiState.value = BaseNetWorkUiState.Success(data)
             },

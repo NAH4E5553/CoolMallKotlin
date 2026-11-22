@@ -2,7 +2,6 @@ package com.joker.coolmall
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -11,9 +10,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import com.joker.coolmall.core.common.config.ThemePreference
-import com.joker.coolmall.core.common.manager.ThemePreferenceManager
 import com.joker.coolmall.core.common.manager.QQLoginManager
+import com.joker.coolmall.core.common.manager.ThemePreferenceManager
 import com.joker.coolmall.core.designsystem.theme.AppTheme
 import com.joker.coolmall.navigation.AppNavHost
 import com.joker.coolmall.navigation.AppNavigator
@@ -29,7 +29,7 @@ import javax.inject.Inject
  * @author Joker.X
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var navigator: AppNavigator
@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
             // 应用主题包装
             AppTheme(
                 darkTheme = isDarkTheme,
-                themeColor = primaryColor
+                themeColor = primaryColor,
             ) {
                 // 设置应用的导航宿主，并传入导航管理器和路由注册器
                 // 这样所有页面都可以通过导航管理器进行导航操作
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
                 requestCode,
                 resultCode,
                 data,
-                QQLoginManager.getInstance().qqLoginListener
+                QQLoginManager.getInstance().qqLoginListener,
             )
         }
 
