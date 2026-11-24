@@ -15,6 +15,8 @@ source_stage=$(mktemp -d "$build_root/.shared-export.XXXXXX")
 trap 'rm -rf "$source_stage"' EXIT
 git -C "$shared" archive "$shared_commit" lib assets test pubspec.yaml pubspec.lock analysis_options.yaml |
   tar -x -C "$source_stage"
+(cd "$source_stage" && patch -s -p1 < "$build_root/android-defer-offscreen-reviews.patch")
+(cd "$source_stage" && patch -s -p1 < "$build_root/android-reuse-purchase-button-shader.patch")
 for entry in lib assets test; do
   mkdir -p "$module/$entry"
   rsync -a --delete "$source_stage/$entry/" "$module/$entry/"

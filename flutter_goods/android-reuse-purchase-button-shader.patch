@@ -1,0 +1,14 @@
+diff --git a/lib/goods_style.dart b/lib/goods_style.dart
+--- a/lib/goods_style.dart
++++ b/lib/goods_style.dart
+@@ -174,7 +174,9 @@
+           decoration: BoxDecoration(
+             borderRadius: BorderRadius.circular(capsule ? 100 : 8),
+             border: filled ? null : Border.all(color: GoodsColors.accent),
+-            gradient: filled ? GoodsColors.gradient : null,
++            // Reuse the solid-fill shader on the first detail frame.
++            color: filled && !capsule ? GoodsColors.accent : null,
++            gradient: filled && capsule ? GoodsColors.gradient : null,
+           ),
+           child: TextButton(
+             style: TextButton.styleFrom(
