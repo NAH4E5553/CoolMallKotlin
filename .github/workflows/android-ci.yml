@@ -66,11 +66,6 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
-      - name: Install Flutter 3.47.4
-        run: |
-          git clone --depth 1 --branch 3.47.4 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
-          test "$(git -C "$RUNNER_TEMP/flutter" rev-parse HEAD)" = 9584c6713b324636289d067944a46fd6b49df14b
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
       - name: Read the shared Flutter revision
         id: shared-flutter
         run: |
@@ -90,8 +85,10 @@ jobs:
       - name: Check Flutter detail
         working-directory: flutter_goods/.module
         run: |
-          flutter analyze --no-pub lib test
-          flutter test --no-pub
+          read -r _ flutter_tag _ < ../sdk.lock
+          flutter="../.flutter-sdks/$flutter_tag/bin/flutter"
+          "$flutter" analyze --no-pub lib test
+          "$flutter" test --no-pub
       - uses: actions/upload-artifact@v7
         with:
           name: flutter-goods-repo

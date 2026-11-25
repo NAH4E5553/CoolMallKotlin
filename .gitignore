@@ -13,6 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+/.build/
 /.idea/
 /.kotlin/
 /build-logic/.kotlin/

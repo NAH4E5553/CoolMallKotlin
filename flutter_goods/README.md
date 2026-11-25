@@ -6,14 +6,15 @@ Dart 源码和图标存于 [CoolMall-Flutter](https://github.com/NAH4E5553/CoolM
 
 ## 本地构建
 
-安装 Flutter 3.47.4 和项目现有 Android 工具链，并确认 Git 可以读取共享私有仓库，然后在仓库根目录执行：
+准备 JDK 17、Android SDK 36、Python 3 及 Bash（macOS 或 Linux），并确认 Git 可以读取共享私有仓库。如果 Android SDK 安装在非默认位置，请将 `ANDROID_HOME` 指向 SDK 目录。在仓库根目录运行：
 
 ```sh
-./flutter_goods/build_android.sh
-./gradlew :app:assembleDevDebug
+./flutter_goods/build_android.sh --app
 ```
 
-也可以设置 `FLUTTER_BOOST_SOURCE` 指向已有的 FlutterBoost Git 检出。脚本提取 4.6.5 的固定提交 `6df80cc1ea425cde1bac7d0265407977221061df`，在生成目录应用仓库内的 `experiments/flutter-boost-4.6.5/boost-android.patch`。上游源码采用 MIT 许可。Flutter SDK 采用 BSD-3-Clause 许可。
+脚本读取 `sdk.lock`，首次下载并校验 Flutter 3.47.4，随后复用 `flutter_goods/.flutter-sdks` 下的 SDK。它生成 AAR，再调用仓库的 Gradle Wrapper 编译 DevDebug APK。只准备 AAR 时省略 `--app`，之后可以在 Android Studio 同步并运行 `devDebug`。APK 输出在 `app/build/outputs/apk/dev/debug`，选择与设备匹配的 ARM ABI。开发调试可使用 Android 默认签名。
+
+可设置 `FLUTTER_SDK` 或 `FLUTTER_BOOST_SOURCE` 复用相应的固定版本 Git 检出。脚本提取 FlutterBoost 4.6.5 的固定提交 `6df80cc1ea425cde1bac7d0265407977221061df`，在生成目录应用仓库内的 `experiments/flutter-boost-4.6.5/boost-android.patch`。上游源码采用 MIT 许可。Flutter SDK 采用 BSD-3-Clause 许可。
 
 修改 Dart 后重新执行构建脚本再打宿主包。Debug 和 Release AAR 发布到模块自己的 `build/host/outputs/repo`（Maven 坐标版本 1.0），包含生成的校验文件。两种模式分别使用匹配的 Flutter 引擎，目标 ABI 为 armeabi-v7a 和 arm64-v8a。Release 的反射保留规则在 `app/proguard-rules.pro`。本地仓库、SDK 包装工程和第三方检出均为生成文件。
 
@@ -22,7 +23,8 @@ CI 通过 `FLUTTER_GOODS_READ_TOKEN` 仓库 Secret 读取锁定版本。该凭�
 ## 验证
 
 ```sh
-(cd flutter_goods/.module && flutter analyze --no-pub lib test && flutter test --no-pub)
+(cd flutter_goods/.module && ../.flutter-sdks/3.47.4/bin/flutter analyze --no-pub lib test)
+(cd flutter_goods/.module && ../.flutter-sdks/3.47.4/bin/flutter test --no-pub)
 ./gradlew :app:assembleDevDebug :app:assembleProdRelease testDevDebugUnitTest lintDevDebug spotlessCheck
 ```
 

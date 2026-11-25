@@ -113,7 +113,7 @@ to join.
 
 
 - **Supported Systems**: Android 7.0 (API 24) and above
-- Product details use FlutterBoost. Run `./flutter_goods/build_android.sh` before the first Android build and after updating the pinned shared Flutter revision. See the [module guide](flutter_goods/README.md).
+- Product details use FlutterBoost. Run `./flutter_goods/build_android.sh --app` from a fresh checkout to set up the pinned Flutter SDK and build the DevDebug APK. See the [local build guide](flutter_goods/README.md).
 - **Update Notes**: Preview versions will be updated from time to time and may not fully sync with
   the latest code changes
 

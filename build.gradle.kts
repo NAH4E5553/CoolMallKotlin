@@ -25,14 +25,22 @@ spotless {
     ratchetFrom("origin/main")
 
     kotlin {
-        target("**/*.kt")
-        targetExclude("**/build/**", "**/generated/**", "flutter_goods/**")
+        target(
+            fileTree(rootDir) {
+                include("**/*.kt")
+                exclude("**/build/**", "**/generated/**", "flutter_goods/**")
+            },
+        )
         ktlint(libs.versions.ktlint.get())
     }
 
     kotlinGradle {
-        target("**/*.gradle.kts")
-        targetExclude("**/build/**", "**/.gradle/**", "flutter_goods/**")
+        target(
+            fileTree(rootDir) {
+                include("**/*.gradle.kts")
+                exclude("**/build/**", "**/.gradle/**", "flutter_goods/**")
+            },
+        )
         ktlint(libs.versions.ktlint.get())
     }
 }
