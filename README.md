@@ -98,7 +98,8 @@ Android 开发感兴趣，无论是学习还是共同创造，都欢迎加入。
       Chucker 的实时网络请求通知，建议开启应用的通知权限。
 
 
-- **支持系统**：Android 6.0 及以上
+- **支持系统**：Android 7.0（API 24）及以上
+- 商品详情使用 FlutterBoost。从新检出运行 `./flutter_goods/build_android.sh --app` 可准备 Flutter SDK 并构建 DevDebug APK。工具链、私库访问和 Android Studio 步骤见[本地构建指南](flutter_goods/README.md)。
 - **更新说明**：预览版本会不定时更新，可能不会完全同步最新的代码变更
 
 ### 相关文档

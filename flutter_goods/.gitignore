@@ -1,0 +1,10 @@
+.android/
+.ios/
+.dart_tool/
+.flutter-plugins*
+build/
+vendor/
+.module/
+.shared-source/
+.shared-export.*/
+.flutter-sdks/

@@ -18,17 +18,18 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.joker.coolmall.navigation.launch.LaunchRoutes
 import com.joker.coolmall.feature.auth.navigation.authGraph
 import com.joker.coolmall.feature.common.navigation.commonGraph
 import com.joker.coolmall.feature.cs.navigation.csGraph
 import com.joker.coolmall.feature.feedback.navigation.feedbackGraph
 import com.joker.coolmall.feature.goods.navigation.goodsGraph
+import com.joker.coolmall.feature.goods.view.GoodsDetailWarmup
 import com.joker.coolmall.feature.launch.navigation.launchGraph
 import com.joker.coolmall.feature.main.navigation.mainGraph
 import com.joker.coolmall.feature.market.navigation.marketGraph
 import com.joker.coolmall.feature.order.navigation.orderGraph
 import com.joker.coolmall.feature.user.navigation.userGraph
+import com.joker.coolmall.navigation.launch.LaunchRoutes
 
 /**
  * 页面切换动画时长（毫秒）
@@ -49,11 +50,9 @@ private val NAV_ANIMATION_SPEC: FiniteAnimationSpec<IntOffset> =
  * @author Joker.X
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
+@Suppress("ktlint:standard:function-naming")
 @Composable
-fun AppNavHost(
-    navigator: AppNavigator,
-    modifier: Modifier = Modifier,
-) {
+fun AppNavHost(navigator: AppNavigator, modifier: Modifier = Modifier) {
     // 创建应用级回退栈，首个页面固定为主页面。
     val backStack = rememberNavBackStack(LaunchRoutes.Splash)
     // 基于当前回退栈构建导航控制器，供 AppNavigator 分发命令时使用。
@@ -129,7 +128,7 @@ private fun createBackwardTransition() = slideInHorizontally(
  * @author Joker.X
  */
 private fun appEntryProvider(sharedTransitionScope: SharedTransitionScope) = entryProvider {
-    mainGraph(sharedTransitionScope)
+    mainGraph(sharedTransitionScope) { GoodsDetailWarmup() }
     goodsGraph()
     authGraph()
     userGraph(sharedTransitionScope)

@@ -1,0 +1,402 @@
+diff --git a/lib/goods_cards.dart b/lib/goods_cards.dart
+--- a/lib/goods_cards.dart
++++ b/lib/goods_cards.dart
+@@ -347,132 +347,141 @@
+       Divider(height: 1, thickness: 1, color: context.goodsColors.border);
+ }
+ 
+-class ReviewsCard extends StatelessWidget {
+-  const ReviewsCard({required this.reviews, required this.onAll, super.key});
+-  final List<Review> reviews;
++class ReviewsHeader extends StatelessWidget {
++  const ReviewsHeader({required this.onAll, super.key});
+   final VoidCallback onAll;
+ 
+   @override
+   Widget build(BuildContext context) => GoodsCard(
++    radius: const BorderRadius.vertical(top: Radius.circular(16)),
++    child: Padding(
++      padding: const EdgeInsets.all(12),
++      child: Row(
++        children: [
++          Expanded(child: DetailSectionTitle(context.label('商品评价', 'Reviews'))),
++          InkWell(
++            onTap: onAll,
++            child: Row(
++              children: [
++                Text(
++                  context.label('查看全部', 'View all'),
++                  style: TextStyle(
++                    fontSize: 12,
++                    color: context.goodsColors.secondary,
++                  ),
++                ),
++                const SizedBox(width: 4),
++                const DetailIcon('right', 16, color: Color(0xffa3a3a3)),
++              ],
++            ),
++          ),
++        ],
++      ),
++    ),
++  );
++}
++
++class ReviewRow extends StatelessWidget {
++  const ReviewRow({required this.review, required this.isLast, super.key});
++  final Review review;
++  final bool isLast;
++
++  @override
++  Widget build(BuildContext context) => GoodsCard(
++    radius: isLast
++        ? const BorderRadius.vertical(bottom: Radius.circular(16))
++        : BorderRadius.zero,
+     child: Column(
+       children: [
++        const GoodsDivider(),
+         Padding(
+           padding: const EdgeInsets.all(12),
+           child: Row(
++            crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
++              SizedBox(
++                width: 32,
++                height: 32,
++                child: ClipOval(child: DetailPhoto(review.avatar)),
++              ),
++              const SizedBox(width: 12),
+               Expanded(
+-                child: DetailSectionTitle(context.label('商品评价', 'Reviews')),
+-              ),
+-              InkWell(
+-                onTap: onAll,
+-                child: Row(
++                child: Column(
++                  crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Text(
+-                      context.label('查看全部', 'View all'),
+-                      style: TextStyle(
+-                        fontSize: 12,
+-                        color: context.goodsColors.secondary,
+-                      ),
++                      review.author.isEmpty
++                          ? context.label('匿名用户', 'Anonymous')
++                          : review.author,
++                      style: const TextStyle(fontSize: 12),
+                     ),
+-                    const SizedBox(width: 4),
+-                    const DetailIcon('right', 16, color: Color(0xffa3a3a3)),
++                    const SizedBox(height: 4),
++                    Semantics(
++                      label: context.label(
++                        '${review.stars}星',
++                        '${review.stars} stars',
++                      ),
++                      child: Row(
++                        children: [
++                          for (var star = 0; star < 5; star++)
++                            Padding(
++                              padding: const EdgeInsets.only(right: 2),
++                              child: DetailIcon(
++                                'star',
++                                14,
++                                color: star < review.stars
++                                    ? const Color(0xffff6700)
++                                    : const Color(0xffc0c0c0),
++                              ),
++                            ),
++                        ],
++                      ),
++                    ),
++                    if (review.text.isNotEmpty) ...[
++                      const SizedBox(height: 4),
++                      Text(
++                        review.text,
++                        style: const TextStyle(fontSize: 12, height: 1.27),
++                      ),
++                    ],
+                   ],
+                 ),
+               ),
+-            ],
+-          ),
+-        ),
+-        for (final review in reviews.take(2)) ...[
+-          const GoodsDivider(),
+-          Padding(
+-            padding: const EdgeInsets.all(12),
+-            child: Row(
+-              crossAxisAlignment: CrossAxisAlignment.start,
+-              children: [
+-                SizedBox(
+-                  width: 32,
+-                  height: 32,
+-                  child: ClipOval(child: DetailPhoto(review.avatar)),
+-                ),
++              if (review.images.isNotEmpty) ...[
+                 const SizedBox(width: 12),
+-                Expanded(
+-                  child: Column(
+-                    crossAxisAlignment: CrossAxisAlignment.start,
+-                    children: [
+-                      Text(
+-                        review.author.isEmpty
+-                            ? context.label('匿名用户', 'Anonymous')
+-                            : review.author,
+-                        style: const TextStyle(fontSize: 12),
+-                      ),
+-                      const SizedBox(height: 4),
+-                      Semantics(
+-                        label: context.label(
+-                          '${review.stars}星',
+-                          '${review.stars} stars',
+-                        ),
+-                        child: Row(
+-                          children: [
+-                            for (var star = 0; star < 5; star++)
+-                              Padding(
+-                                padding: const EdgeInsets.only(right: 2),
+-                                child: DetailIcon(
+-                                  'star',
+-                                  14,
+-                                  color: star < review.stars
+-                                      ? const Color(0xffff6700)
+-                                      : const Color(0xffc0c0c0),
+-                                ),
+-                              ),
+-                          ],
+-                        ),
+-                      ),
+-                      if (review.text.isNotEmpty) ...[
+-                        const SizedBox(height: 4),
+-                        Text(
+-                          review.text,
+-                          style: const TextStyle(fontSize: 12, height: 1.27),
+-                        ),
+-                      ],
+-                    ],
+-                  ),
+-                ),
+-                if (review.images.isNotEmpty) ...[
+-                  const SizedBox(width: 12),
+-                  ClipRRect(
+-                    borderRadius: BorderRadius.circular(8),
+-                    child: SizedBox(
+-                      width: 60,
+-                      height: 60,
+-                      child: Stack(
+-                        fit: StackFit.expand,
+-                        children: [
+-                          DetailPhoto(review.images.first),
+-                          if (review.images.length > 1)
+-                            Positioned(
+-                              right: 0,
+-                              bottom: 0,
+-                              child: Container(
+-                                color: Colors.black.withValues(alpha: .4),
+-                                padding: const EdgeInsets.all(4),
+-                                child: Text(
+-                                  '+${review.images.length - 1}',
+-                                  style: const TextStyle(
+-                                    fontSize: 11,
+-                                    color: Colors.white,
+-                                  ),
++                ClipRRect(
++                  borderRadius: BorderRadius.circular(8),
++                  child: SizedBox(
++                    width: 60,
++                    height: 60,
++                    child: Stack(
++                      fit: StackFit.expand,
++                      children: [
++                        DetailPhoto(review.images.first),
++                        if (review.images.length > 1)
++                          Positioned(
++                            right: 0,
++                            bottom: 0,
++                            child: Container(
++                              color: Colors.black.withValues(alpha: .4),
++                              padding: const EdgeInsets.all(4),
++                              child: Text(
++                                '+${review.images.length - 1}',
++                                style: const TextStyle(
++                                  fontSize: 11,
++                                  color: Colors.white,
+                                 ),
+                               ),
+                             ),
+-                        ],
+-                      ),
++                          ),
++                      ],
+                     ),
+                   ),
+-                ],
++                ),
+               ],
+-            ),
+-          ),
+-        ],
++            ],
++          ),
++        ),
+       ],
+     ),
+   );
+diff --git a/lib/goods_detail.dart b/lib/goods_detail.dart
+--- a/lib/goods_detail.dart
++++ b/lib/goods_detail.dart
+@@ -1,4 +1,5 @@
+ import 'package:flutter/material.dart';
++import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+ import 'package:flutter/services.dart';
+ import 'package:flutter_boost/flutter_boost.dart';
+ 
+@@ -24,6 +25,7 @@
+   bool acting = false;
+   int? cartCount;
+   bool presented = false;
++  bool _enableScrollCache = false;
+ 
+   @override
+   void initState() {
+@@ -34,8 +36,13 @@
+ 
+   void refresh() => setState(() {});
+ 
+-  void updateTopBar() =>
+-      topBarOpacity.value = (scroll.offset / 140).clamp(0.0, 1.0);
++  void updateTopBar() {
++    final offset = scroll.offset;
++    topBarOpacity.value = (offset / 140).clamp(0.0, 1.0);
++    if (!_enableScrollCache && offset > 0) {
++      setState(() => _enableScrollCache = true);
++    }
++  }
+ 
+   @override
+   void dispose() {
+@@ -152,6 +159,8 @@
+           ? snapshot.data
+           : null;
+       final sku = draft.touched ? draft.sku : goods?.selected;
++      final reviews =
++          goods?.comments.take(2).toList(growable: false) ?? const <Review>[];
+       return DefaultTextStyle.merge(
+         style: TextStyle(color: colors.ink),
+         child: Scaffold(
+@@ -161,6 +170,11 @@
+               if (goods != null)
+                 CustomScrollView(
+                   controller: scroll,
++                  // Lay out the visible content first. Restore look-ahead when
++                  // the user starts moving through the detail page.
++                  scrollCacheExtent: _enableScrollCache
++                      ? null
++                      : const ScrollCacheExtent.pixels(0),
+                   slivers: [
+                     SliverToBoxAdapter(child: GoodsHero(images: goods.images)),
+                     SliverPadding(
+@@ -175,12 +189,14 @@
+                           ),
+                           const SizedBox(height: 12),
+                           const DeliveryCard(),
+-                          if (goods.comments.isNotEmpty) ...[
++                          if (reviews.isNotEmpty) ...[
+                             const SizedBox(height: 12),
+-                            ReviewsCard(
+-                              reviews: goods.comments,
+-                              onAll: () => action('comments'),
+-                            ),
++                            ReviewsHeader(onAll: () => action('comments')),
++                            for (var i = 0; i < reviews.length; i++)
++                              ReviewRow(
++                                review: reviews[i],
++                                isLast: i == reviews.length - 1,
++                              ),
+                           ],
+                           const SizedBox(height: 12),
+                           GoodsCard(
+diff --git a/test/goods_detail_test.dart b/test/goods_detail_test.dart
+--- a/test/goods_detail_test.dart
++++ b/test/goods_detail_test.dart
+@@ -13,10 +13,12 @@
+   late List<MethodCall> calls;
+   var failure = false;
+   var empty = false;
++  var withReviews = false;
+   setUp(() {
+     calls = [];
+     failure = false;
+     empty = false;
++    withReviews = false;
+     messenger.setMockMethodCallHandler(channel, (call) async {
+       calls.add(call);
+       switch (call.method) {
+@@ -31,7 +33,20 @@
+             'sold': 7,
+             'images': [],
+             'details': [],
+-            'comments': [],
++            'comments': withReviews
++                ? [
++                    {
++                      'author': 'First reviewer',
++                      'text': 'First review',
++                      'stars': 4,
++                    },
++                    {
++                      'author': 'Second reviewer',
++                      'text': 'Second review',
++                      'stars': 5,
++                    },
++                  ]
++                : [],
+             'coupons': [
+               {
+                 'id': 51,
+@@ -54,9 +69,12 @@
+   });
+   tearDown(() => messenger.setMockMethodCallHandler(channel, null));
+ 
+-  Future<void> open(WidgetTester tester) async {
++  Future<void> open(
++    WidgetTester tester, {
++    Size size = const Size(402, 874),
++  }) async {
+     tester.view.devicePixelRatio = 1;
+-    tester.view.physicalSize = const Size(402, 874);
++    tester.view.physicalSize = size;
+     addTearDown(tester.view.resetPhysicalSize);
+     addTearDown(tester.view.resetDevicePixelRatio);
+     await tester.pumpWidget(
+@@ -108,6 +126,27 @@
+     },
+   );
+ 
++  testWidgets('offscreen reviews are mounted when the user scrolls to them', (
++    tester,
++  ) async {
++    withReviews = true;
++    await open(tester, size: const Size(402, 700));
++
++    expect(find.text('Test product'), findsOneWidget);
++    expect(find.text('First reviewer', skipOffstage: false), findsNothing);
++    expect(find.text('Second reviewer', skipOffstage: false), findsNothing);
++
++    await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
++    await tester.pumpAndSettle();
++    expect(find.text('First reviewer', skipOffstage: false), findsOneWidget);
++    expect(find.text('Second reviewer', skipOffstage: false), findsOneWidget);
++    await tester.ensureVisible(find.text('View all'));
++    await tester.pumpAndSettle();
++    await tester.tap(find.text('View all'));
++    await tester.pumpAndSettle();
++    expect(calls.last.method, 'comments');
++  });
++
+   testWidgets('empty payload has its own retryable state', (tester) async {
+     empty = true;
+     await open(tester);

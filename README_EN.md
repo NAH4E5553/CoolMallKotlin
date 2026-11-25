@@ -112,7 +112,8 @@ to join.
       notifications from Chucker, it's recommended to enable app notification permissions.
 
 
-- **Supported Systems**: Android 6.0 and above
+- **Supported Systems**: Android 7.0 (API 24) and above
+- Product details use FlutterBoost. Run `./flutter_goods/build_android.sh --app` from a fresh checkout to set up the pinned Flutter SDK and build the DevDebug APK. See the [local build guide](flutter_goods/README.md).
 - **Update Notes**: Preview versions will be updated from time to time and may not fully sync with
   the latest code changes
 

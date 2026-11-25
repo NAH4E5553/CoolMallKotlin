@@ -53,9 +53,52 @@ jobs:
           fi
           echo "run_android=$run_android" >> "$GITHUB_OUTPUT"
 
+  flutter-goods:
+    name: Build and test Flutter goods module
+    needs: changes
+    if: needs.changes.outputs.run_android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+      - name: Read the shared Flutter revision
+        id: shared-flutter
+        run: |
+          read -r url revision < flutter_goods/source.lock
+          repo="${url#https://github.com/}"
+          echo "repository=${repo%.git}" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - name: Check out the pinned private Flutter source
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ steps.shared-flutter.outputs.repository }}
+          ref: ${{ steps.shared-flutter.outputs.revision }}
+          token: ${{ secrets.FLUTTER_GOODS_READ_TOKEN }}
+          persist-credentials: false
+          path: flutter_goods/.shared-source
+      - run: ./flutter_goods/build_android.sh
+      - name: Check Flutter detail
+        working-directory: flutter_goods/.module
+        run: |
+          read -r _ flutter_tag _ < ../sdk.lock
+          flutter="../.flutter-sdks/$flutter_tag/bin/flutter"
+          "$flutter" analyze --no-pub lib test
+          "$flutter" test --no-pub
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flutter-goods-repo
+          path: flutter_goods/build/host/outputs/repo/
+          retention-days: 1
+          if-no-files-found: error
+
   build:
     name: Build
-    needs: changes
+    needs: [changes, flutter-goods]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -89,13 +132,19 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.run_android == 'true'
+        with:
+          name: flutter-goods-repo
+          path: flutter_goods/build/host/outputs/repo
+
       - name: Build DevDebug APK
         if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew :app:assembleDevDebug --no-daemon --stacktrace
 
   unit-tests:
     name: Unit Tests
-    needs: changes
+    needs: [changes, flutter-goods]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -129,6 +178,12 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.run_android == 'true'
+        with:
+          name: flutter-goods-repo
+          path: flutter_goods/build/host/outputs/repo
+
       - name: Run DevDebug unit tests
         if: needs.changes.outputs.run_android == 'true'
         run: ./gradlew testDevDebugUnitTest --no-daemon --stacktrace
@@ -146,7 +201,7 @@ jobs:
 
   lint:
     name: Android Lint
-    needs: changes
+    needs: [changes, flutter-goods]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -179,6 +234,12 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
+
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.run_android == 'true'
+        with:
+          name: flutter-goods-repo
+          path: flutter_goods/build/host/outputs/repo
 
       - name: Run Android Lint
         if: needs.changes.outputs.run_android == 'true'

@@ -16,7 +16,7 @@ namespace = "com.joker.coolmall"
 # 编译 SDK 版本
 compileSdk = "36"
 # 最低支持的 SDK 版本
-minSdk = "23"
+minSdk = "24"
 # 目标 SDK 版本
 targetSdk = "36"
 
@@ -145,7 +145,14 @@ alipaysdkAndroid = "15.8.40"
 # XXPermissions 权限框架: https://github.com/getActivity/XXPermissions
 xxpermissions = "28.0"
 
+goodsFlutter = "1.0"
+fragment = "1.8.9"
+
 [libraries]
+goods-flutter-debug = { module = "com.joker.coolmall.fluttergoods:flutter_debug", version.ref = "goodsFlutter" }
+goods-flutter-release = { module = "com.joker.coolmall.fluttergoods:flutter_release", version.ref = "goodsFlutter" }
+androidx-fragment-runtime = { module = "androidx.fragment:fragment", version.ref = "fragment" }
+androidx-fragment-compose = { module = "androidx.fragment:fragment-compose", version.ref = "fragment" }
 
 # Android 核心库
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

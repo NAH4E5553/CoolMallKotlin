@@ -1,0 +1,147 @@
+diff --git a/android/build.gradle b/android/build.gradle
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -1,28 +1,11 @@
+ group 'com.idlefish.flutterboost'
+ version '1.0-SNAPSHOT'
+-
+-buildscript {
+-    repositories {
+-        google()
+-        jcenter()
+-    }
+-
+-    dependencies {
+-        classpath 'com.android.tools.build:gradle:3.3.0'
+-    }
+-}
+-
+-rootProject.allprojects {
+-    repositories {
+-        google()
+-        jcenter()
+-    }
+-}
+ 
+ apply plugin: 'com.android.library'
+ 
+ android {
+-    compileSdkVersion 31
++    namespace 'com.idlefish.flutterboost'
++    compileSdk 36
+     buildToolsVersion '30.0.2'
+     defaultConfig {
+         minSdkVersion 16
+diff --git a/android/src/main/java/com/idlefish/flutterboost/FlutterBoost.java b/android/src/main/java/com/idlefish/flutterboost/FlutterBoost.java
+--- a/android/src/main/java/com/idlefish/flutterboost/FlutterBoost.java
++++ b/android/src/main/java/com/idlefish/flutterboost/FlutterBoost.java
+@@ -15,11 +15,11 @@
+ import java.util.List;
+ import java.util.Map;
+ 
++import io.flutter.FlutterInjector;
+ import io.flutter.embedding.android.FlutterEngineProvider;
+ import io.flutter.embedding.engine.FlutterEngine;
+ import io.flutter.embedding.engine.FlutterEngineCache;
+ import io.flutter.embedding.engine.dart.DartExecutor;
+-import io.flutter.view.FlutterMain;
+ 
+ public class FlutterBoost {
+     public static final String ENGINE_ID = "flutter_boost_default_engine";
+@@ -86,7 +86,8 @@
+             // Pre-warm the cached FlutterEngine.
+             engine.getNavigationChannel().setInitialRoute(options.initialRoute());
+             engine.getDartExecutor().executeDartEntrypoint(new DartExecutor.DartEntrypoint(
+-                    FlutterMain.findAppBundlePath(), options.dartEntrypoint()), options.dartEntrypointArgs());
++                    FlutterInjector.instance().flutterLoader().findAppBundlePath(),
++                    options.dartEntrypoint()), options.dartEntrypointArgs());
+         }
+         if (callback != null) callback.onStart(engine);
+ 
+diff --git a/android/src/main/java/com/idlefish/flutterboost/containers/FlutterBoostFragment.java b/android/src/main/java/com/idlefish/flutterboost/containers/FlutterBoostFragment.java
+--- a/android/src/main/java/com/idlefish/flutterboost/containers/FlutterBoostFragment.java
++++ b/android/src/main/java/com/idlefish/flutterboost/containers/FlutterBoostFragment.java
+@@ -39,6 +39,7 @@
+ 
+ public class FlutterBoostFragment extends FlutterFragment implements FlutterViewContainer {
+     private static final String TAG = "FlutterBoost_java";
++    private static final String KEYBOARD_CHANNEL = "flutter/keyboard";
+     private final String who = UUID.randomUUID().toString();
+     private final FlutterTextureHooker textureHooker=new FlutterTextureHooker();
+     private FlutterView flutterView;
+@@ -66,6 +67,12 @@
+     }
+ 
+     @Override
++    public boolean attachToEngineAutomatically() {
++        // Boost attaches the shared engine when this container becomes active.
++        return false;
++    }
++
++    @Override
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         if (isDebugLoggingEnabled()) Log.d(TAG, "#onCreate: " + this);
+@@ -83,7 +90,6 @@
+         if (isDebugLoggingEnabled()) Log.d(TAG, "#onDestroy: " + this);
+         stage = LifecycleStage.ON_DESTROY;
+         textureHooker.onFlutterTextureViewRelease();
+-        detachFromEngineIfNeeded();
+ 
+         // Call super's onDestroy
+         super.onDestroy();
+@@ -101,8 +107,6 @@
+         FlutterBoost.instance().getPlugin().onContainerCreated(this);
+         View view = super.onCreateView(inflater, container, savedInstanceState);
+         flutterView = FlutterBoostUtils.findFlutterView(view);
+-        // Detach FlutterView from engine before |onResume|.
+-        flutterView.detachFromFlutterEngine();
+         if (view == flutterView) {
+             // fix https://github.com/alibaba/flutter_boost/issues/1732
+             FrameLayout frameLayout = new FrameLayout(view.getContext());
+@@ -110,6 +114,14 @@
+             return frameLayout;
+         }
+         return view;
++    }
++
++    @Override
++    public void onViewCreated(View view, Bundle savedInstanceState) {
++        // FlutterFragment registers a window focus listener here. Boost dispatches app lifecycle
++        // state itself (see shouldDispatchAppLifecycleState()), so the listener has no effect.
++        // Skip registration because the view can already be detached when FlutterFragment tries
++        // to remove the listener in onDestroyView, leaving it on the host window's observer.
+     }
+ 
+     @Override
+@@ -206,7 +218,9 @@
+         if (isDebugLoggingEnabled()) Log.d(TAG, "#onDestroyView: " + this);
+         FlutterBoost.instance().getPlugin().onContainerDestroyed(this);
+ 
++        detachFromEngineIfNeeded();
+         super.onDestroyView();
++        flutterView = null;
+     }
+ 
+     @Override
+@@ -357,15 +371,19 @@
+ 
+     private void performDetach() {
+         if (isDebugLoggingEnabled()) Log.d(TAG, "#performDetach: " + this);
++        FlutterEngine engine = getFlutterEngine();
+ 
+         // Plugins are no longer attached to the activity.
+-        getFlutterEngine().getActivityControlSurface().detachFromActivity();
++        engine.getActivityControlSurface().detachFromActivity();
+ 
+         // Release Flutter's control of UI such as system chrome.
+         releasePlatformChannel();
+ 
+         // Detach rendering pipeline.
+         flutterView.detachFromFlutterEngine();
++        // Flutter 3.47.4 leaves these view-owned input handlers on the shared engine after detach.
++        engine.getScribeChannel().setScribeMethodHandler(null);
++        engine.getDartExecutor().getBinaryMessenger().setMessageHandler(KEYBOARD_CHANNEL, null);
+     }
+ 
+     private void releasePlatformChannel() {

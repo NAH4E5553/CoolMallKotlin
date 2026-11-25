@@ -6,4 +6,8 @@ android {
     namespace = "com.joker.coolmall.feature.goods"
 }
 
-dependencies {}
+dependencies {
+    implementation(libs.androidx.fragment.compose)
+    debugImplementation(libs.goods.flutter.debug)
+    releaseImplementation(libs.goods.flutter.release)
+}

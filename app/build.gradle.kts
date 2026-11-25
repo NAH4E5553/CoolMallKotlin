@@ -48,10 +48,10 @@ android {
                 storePassword = signingProperty("storePassword")
 
                 // 启用所有签名方案以确保最大兼容性
-                enableV1Signing = true  // JAR 签名 (Android 1.0+)
-                enableV2Signing = true  // APK 签名 v2 (Android 7.0+)
-                enableV3Signing = true  // APK 签名 v3 (Android 9.0+)
-                enableV4Signing = true  // APK 签名 v4 (Android 11.0+)
+                enableV1Signing = true // JAR 签名 (Android 1.0+)
+                enableV2Signing = true // APK 签名 v2 (Android 7.0+)
+                enableV3Signing = true // APK 签名 v3 (Android 9.0+)
+                enableV4Signing = true // APK 签名 v4 (Android 11.0+)
             }
         }
     }
@@ -75,13 +75,14 @@ android {
             // 配置ProGuard规则文件
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
 }
 
 dependencies {
+    implementation(libs.androidx.fragment.runtime)
     implementation(projects.core.designsystem)
     implementation(projects.core.util)
     implementation(projects.core.data)
