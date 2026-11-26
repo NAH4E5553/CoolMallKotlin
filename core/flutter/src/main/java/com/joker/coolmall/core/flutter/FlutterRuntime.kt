@@ -1,6 +1,7 @@
 package com.joker.coolmall.core.flutter
 
 import android.app.Application
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.MessageQueue
@@ -14,8 +15,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.idlefish.flutterboost.FlutterBoost
 import com.idlefish.flutterboost.FlutterBoostDelegate
 import com.idlefish.flutterboost.FlutterBoostRouteOptions
+import com.idlefish.flutterboost.FlutterBoostSetupOptions
 import com.joker.coolmall.navigation.goods.GoodsNavigator
 import io.flutter.FlutterInjector
+import io.flutter.embedding.engine.FlutterShellArgs
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -48,7 +51,11 @@ internal suspend fun awaitFlutterLoader(application: Application) {
     val loader = FlutterInjector.instance().flutterLoader()
     loader.startInitialization(application)
     suspendCancellableCoroutine { continuation ->
-        loader.ensureInitializationCompleteAsync(application, null, Handler(Looper.getMainLooper())) {
+        loader.ensureInitializationCompleteAsync(
+            application,
+            flutterShellArgs(),
+            Handler(Looper.getMainLooper()),
+        ) {
             continuation.resume(Unit)
         }
     }
@@ -67,8 +74,22 @@ internal suspend fun awaitMainQueueIdle() = suspendCancellableCoroutine { contin
 internal fun startFlutterEngine(application: Application) {
     val boost = FlutterBoost.instance()
     if (boost.engine == null) {
-        boost.setup(application, CoolMallBoostDelegate, null)
+        val options = FlutterBoostSetupOptions.Builder()
+            .shellArgs(flutterShellArgs())
+            .build()
+        boost.setup(application, CoolMallBoostDelegate, null, options)
     }
+}
+
+private fun flutterShellArgs(): Array<String>? {
+    // The first Impeller GLES surface stalls the raster thread on Mi 9 with Android 11.
+    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R &&
+        Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) &&
+        Build.DEVICE.equals("cepheus", ignoreCase = true)
+    ) {
+        return arrayOf(FlutterShellArgs.ARG_DISABLE_IMPELLER)
+    }
+    return null
 }
 
 private object CoolMallBoostDelegate : FlutterBoostDelegate {
