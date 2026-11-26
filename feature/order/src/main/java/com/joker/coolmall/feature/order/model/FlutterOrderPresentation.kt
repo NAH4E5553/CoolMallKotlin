@@ -64,11 +64,17 @@ internal fun Order.flutterSnapshot(detail: Boolean = false): Map<String, Any> = 
     }
 }
 
-private fun Address.flutterSnapshot() = mapOf(
-    "contact" to contact,
-    "phone" to phone,
-    "location" to listOf(province, city, district, address).joinToString(""),
-)
+private fun Address.flutterSnapshot(): Map<String, Any> {
+    val region = listOf(province, city, district).joinToString("")
+    return mapOf(
+        "contact" to contact,
+        "phone" to phone,
+        "location" to region + address,
+        "region" to region,
+        "street" to address,
+        "isDefault" to isDefault,
+    )
+}
 
 private fun OrderGoods.flutterSnapshot(): Map<String, Any> = buildMap {
     goodsInfo?.title?.let { put("title", it) }

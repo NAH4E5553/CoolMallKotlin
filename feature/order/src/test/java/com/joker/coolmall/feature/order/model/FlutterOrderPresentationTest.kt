@@ -15,7 +15,7 @@ class FlutterOrderPresentationTest {
             price = 3999,
             discountPrice = 30,
             status = 6,
-            address = Address(contact = "测试联系人", province = "测试省", address = "测试路"),
+            address = Address(contact = "测试联系人", province = "测试省", address = "测试路", isDefault = true),
             goodsList = listOf(OrderGoods(price = 15.02, count = 2)),
             refund = Order.Refund(amount = 15.02, status = 1),
         )
@@ -26,7 +26,17 @@ class FlutterOrderPresentationTest {
         assertEquals(396900L, listCard["payableMinor"])
         assertEquals(listOf(mapOf<String, Any>("quantity" to 2, "unitPriceMinor" to 1502L)), listCard["lines"])
         assertFalse(listCard.containsKey("address"))
-        assertEquals(mapOf("contact" to "测试联系人", "phone" to "", "location" to "测试省测试路"), detail["address"])
+        assertEquals(
+            mapOf(
+                "contact" to "测试联系人",
+                "phone" to "",
+                "location" to "测试省测试路",
+                "region" to "测试省",
+                "street" to "测试路",
+                "isDefault" to true,
+            ),
+            detail["address"],
+        )
         assertEquals(mapOf<String, Any>("amountMinor" to 1502L, "status" to 1), detail["refund"])
     }
 
