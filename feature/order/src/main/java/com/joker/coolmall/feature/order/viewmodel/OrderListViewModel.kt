@@ -18,6 +18,7 @@ import com.joker.coolmall.core.model.request.OrderPageRequest
 import com.joker.coolmall.core.model.response.NetworkPageData
 import com.joker.coolmall.feature.order.model.OrderStatus
 import com.joker.coolmall.feature.order.model.uncommentedGoods
+import com.joker.coolmall.feature.order.model.wireStatuses
 import com.joker.coolmall.navigation.RefreshResult
 import com.joker.coolmall.navigation.goods.GoodsNavigator
 import com.joker.coolmall.navigation.navigate
@@ -561,15 +562,7 @@ class OrderListViewModel @AssistedInject constructor(
     /**
      * 获取指定标签的状态过滤条件
      */
-    private fun getStatusFilter(tabIndex: Int): List<Int>? = when (OrderStatus.entries[tabIndex]) {
-        OrderStatus.ALL -> null
-        OrderStatus.UNPAID -> listOf(0)
-        OrderStatus.UNSHIPPED -> listOf(1)
-        OrderStatus.UNRECEIVED -> listOf(2)
-        OrderStatus.AFTER_SALE -> listOf(5, 6)
-        OrderStatus.UNEVALUATED -> listOf(3)
-        OrderStatus.COMPLETED -> listOf(4)
-    }
+    private fun getStatusFilter(tabIndex: Int): List<Int>? = OrderStatus.entries[tabIndex].wireStatuses()
 
     /**
      * 取消订单

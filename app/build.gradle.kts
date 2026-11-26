@@ -87,6 +87,7 @@ dependencies {
     implementation(projects.core.util)
     implementation(projects.core.data)
     implementation(projects.core.common)
+    implementation(projects.core.flutter)
 
     // 导航
     implementation(projects.core.navigation)

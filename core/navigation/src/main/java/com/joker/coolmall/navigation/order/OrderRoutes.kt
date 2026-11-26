@@ -30,10 +30,14 @@ object OrderRoutes {
      * 订单详情路由
      *
      * @param orderId 订单ID
-     * @author Joker.X
+     * @param action 在读取最新订单后打开现有的原生操作
      */
     @Serializable
-    data class Detail(val orderId: Long) : NavKey
+    data class Detail(val orderId: Long, val action: DetailAction? = null) : NavKey
+
+    /** 从混合订单页移交给原生详情的操作。 */
+    @Serializable
+    enum class DetailAction { CANCEL, CONFIRM_RECEIPT, REVIEW, REBUY }
 
     /**
      * 订单支付路由
@@ -44,11 +48,7 @@ object OrderRoutes {
      * @author Joker.X
      */
     @Serializable
-    data class Pay(
-        val orderId: Long,
-        val price: Int,
-        val from: String? = null
-    ) : NavKey
+    data class Pay(val orderId: Long, val price: Int, val from: String? = null) : NavKey
 
     /**
      * 退款申请路由
