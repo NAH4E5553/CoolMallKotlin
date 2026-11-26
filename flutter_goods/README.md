@@ -1,6 +1,8 @@
-# Flutter 商品详情
+# Flutter 商品详情与订单
 
 首页、分类和订单等入口继续使用 `GoodsRoutes.Detail(goodsId)`。Android 使用 Navigation3 管理返回栈，详情 Entry 通过 FlutterBoost Fragment 展示 Flutter 页面。页面右上角的“原生版”使用同一个 ViewModel 切回 Compose。规格、库存、购物车、领券和订单确认均使用现有 Android 业务层。
+
+「我的 → 我的订单 → 查看全部」和状态快捷入口使用共享 Flutter 订单列表。选中订单后，详情在同一个容器内打开。列表、筛选和详情使用原生 `OrderRepository`。支付、售后、物流、确认收货、取消、评价和再次购买交给现有的原生操作。商品与订单页面共用 `core:flutter` 中的 FlutterBoost 引擎和容器。
 
 Dart 源码和图标存于 [CoolMall-Flutter](https://github.com/NAH4E5553/CoolMall-Flutter)，本目录的 `source.lock` 固定所使用的提交。构建脚本通过 Git 获取锁定提交，并将其解包到 `.module`。本地也可通过 `COOLMALL_FLUTTER_MODULE` 指定已包含该提交的 Git 仓库。
 

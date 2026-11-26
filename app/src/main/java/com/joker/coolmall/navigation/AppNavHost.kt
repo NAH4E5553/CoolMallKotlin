@@ -18,12 +18,12 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.joker.coolmall.core.flutter.FlutterWarmup
 import com.joker.coolmall.feature.auth.navigation.authGraph
 import com.joker.coolmall.feature.common.navigation.commonGraph
 import com.joker.coolmall.feature.cs.navigation.csGraph
 import com.joker.coolmall.feature.feedback.navigation.feedbackGraph
 import com.joker.coolmall.feature.goods.navigation.goodsGraph
-import com.joker.coolmall.feature.goods.view.GoodsDetailWarmup
 import com.joker.coolmall.feature.launch.navigation.launchGraph
 import com.joker.coolmall.feature.main.navigation.mainGraph
 import com.joker.coolmall.feature.market.navigation.marketGraph
@@ -128,7 +128,7 @@ private fun createBackwardTransition() = slideInHorizontally(
  * @author Joker.X
  */
 private fun appEntryProvider(sharedTransitionScope: SharedTransitionScope) = entryProvider {
-    mainGraph(sharedTransitionScope) { GoodsDetailWarmup() }
+    mainGraph(sharedTransitionScope) { FlutterWarmup() }
     goodsGraph()
     authGraph()
     userGraph(sharedTransitionScope)

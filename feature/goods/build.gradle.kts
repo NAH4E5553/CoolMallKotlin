@@ -7,7 +7,5 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.fragment.compose)
-    debugImplementation(libs.goods.flutter.debug)
-    releaseImplementation(libs.goods.flutter.release)
+    implementation(projects.core.flutter)
 }

@@ -17,4 +17,18 @@ enum class OrderStatus(@param:StringRes val labelRes: Int) {
     AFTER_SALE(R.string.order_status_after_sale),
     UNEVALUATED(R.string.order_status_unevaluated),
     COMPLETED(R.string.order_status_completed_tab),
-} 
+}
+
+/** Maps the account page's saved tab index to the shared order filter. */
+internal fun orderTab(tab: String?): OrderStatus =
+    OrderStatus.entries.getOrNull(tab?.toIntOrNull() ?: 0) ?: OrderStatus.ALL
+
+internal fun OrderStatus.wireStatuses(): List<Int>? = when (this) {
+    OrderStatus.ALL -> null
+    OrderStatus.UNPAID -> listOf(0)
+    OrderStatus.UNSHIPPED -> listOf(1)
+    OrderStatus.UNRECEIVED -> listOf(2)
+    OrderStatus.AFTER_SALE -> listOf(5, 6)
+    OrderStatus.UNEVALUATED -> listOf(3)
+    OrderStatus.COMPLETED -> listOf(4)
+}

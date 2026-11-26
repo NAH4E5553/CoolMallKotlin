@@ -1,8 +1,7 @@
 package com.joker.coolmall.feature.goods.view
 
-import androidx.lifecycle.lifecycleScope
-import com.idlefish.flutterboost.FlutterBoost
 import com.joker.coolmall.core.common.base.state.BaseNetWorkUiState
+import com.joker.coolmall.core.flutter.FlutterContainerConnection
 import com.joker.coolmall.core.model.entity.GoodsSpec
 import com.joker.coolmall.core.model.entity.SelectedGoods
 import com.joker.coolmall.feature.goods.model.presentation
@@ -19,14 +18,14 @@ import kotlinx.coroutines.launch
 
 /** Each container has a separate messenger address, including two visits to the same product. */
 internal class GoodsDetailChannel(
-    fragment: GoodsFlutterFragment,
+    connection: FlutterContainerConnection,
     private val model: GoodsDetailViewModel,
     private val openNative: () -> Unit,
-) {
-    private val scope = fragment.viewLifecycleOwner.lifecycleScope
+) : AutoCloseable {
+    private val scope = connection.scope
     private val channel = MethodChannel(
-        FlutterBoost.instance().engine.dartExecutor.binaryMessenger,
-        "coolmall/goods/${fragment.uniqueId}",
+        connection.messenger,
+        "coolmall/goods/${connection.id}",
     )
 
     init {
@@ -72,7 +71,7 @@ internal class GoodsDetailChannel(
         }
     }
 
-    fun close() = channel.setMethodCallHandler(null)
+    override fun close() = channel.setMethodCallHandler(null)
 
     private fun selectGoods(call: MethodCall) {
         val goods = model.getSuccessData().goodsInfo

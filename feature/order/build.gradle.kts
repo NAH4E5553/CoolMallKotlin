@@ -7,6 +7,8 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.flutter)
+
     // 支付宝支付
     implementation(libs.alipaysdk.android)
 

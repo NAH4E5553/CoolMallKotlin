@@ -63,6 +63,7 @@ include(":core:designsystem")
 include(":core:model")
 include(":core:network")
 include(":core:ui")
+include(":core:flutter")
 include(":core:util")
 include(":core:result")
 

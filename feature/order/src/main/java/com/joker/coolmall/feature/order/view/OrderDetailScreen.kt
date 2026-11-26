@@ -12,7 +12,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +50,7 @@ import com.joker.coolmall.core.ui.component.text.TextType
 import com.joker.coolmall.core.ui.component.title.TitleWithLine
 import com.joker.coolmall.feature.order.R
 import com.joker.coolmall.feature.order.component.OrderButtons
+import com.joker.coolmall.feature.order.model.flutterActions
 import com.joker.coolmall.feature.order.viewmodel.OrderDetailViewModel
 import com.joker.coolmall.navigation.navigateBack
 import com.joker.coolmall.navigation.order.OrderRoutes
@@ -84,6 +89,20 @@ internal fun OrderDetailRoute(
     val rebuyModalVisible by viewModel.rebuyModalVisible.collectAsStateWithLifecycle()
     // 商品评论弹窗显示状态
     val commentModalVisible by viewModel.commentModalVisible.collectAsStateWithLifecycle()
+    var actionOpened by rememberSaveable(navKey) { mutableStateOf(false) }
+    val order = (uiState as? BaseNetWorkUiState.Success)?.data
+    LaunchedEffect(navKey.action, order) {
+        val action = navKey.action
+        if (!actionOpened && action != null && order?.flutterActions()?.any { it.detailAction == action } == true) {
+            actionOpened = true
+            when (action) {
+                OrderRoutes.DetailAction.CANCEL -> viewModel.cancelOrder()
+                OrderRoutes.DetailAction.CONFIRM_RECEIPT -> viewModel.confirmOrder()
+                OrderRoutes.DetailAction.REVIEW -> viewModel.toOrderComment()
+                OrderRoutes.DetailAction.REBUY -> viewModel.handleRebuy()
+            }
+        }
+    }
     OrderDetailScreen(
         uiState = uiState,
         cartList = cartList,

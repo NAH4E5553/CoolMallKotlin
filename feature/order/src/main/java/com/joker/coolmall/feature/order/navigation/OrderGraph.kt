@@ -2,14 +2,14 @@ package com.joker.coolmall.feature.order.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import com.joker.coolmall.navigation.order.OrderRoutes
+import com.joker.coolmall.feature.order.view.FlutterOrderListRoute
 import com.joker.coolmall.feature.order.view.OrderCommentRoute
 import com.joker.coolmall.feature.order.view.OrderConfirmRoute
 import com.joker.coolmall.feature.order.view.OrderDetailRoute
-import com.joker.coolmall.feature.order.view.OrderListRoute
 import com.joker.coolmall.feature.order.view.OrderLogisticsRoute
 import com.joker.coolmall.feature.order.view.OrderPayRoute
 import com.joker.coolmall.feature.order.view.OrderRefundRoute
+import com.joker.coolmall.navigation.order.OrderRoutes
 
 /**
  * 订单模块导航图
@@ -18,7 +18,7 @@ import com.joker.coolmall.feature.order.view.OrderRefundRoute
  */
 fun EntryProviderScope<NavKey>.orderGraph() {
     entry<OrderRoutes.List> { key ->
-        OrderListRoute(navKey = key)
+        FlutterOrderListRoute(navKey = key)
     }
     entry<OrderRoutes.Confirm> {
         OrderConfirmRoute()
